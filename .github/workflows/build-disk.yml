@@ -47,6 +47,7 @@ jobs:
       matrix:
         disk-type: ["anaconda-iso"]
         # disk-type: ["qcow2", "anaconda-iso"]
+        major_version: [43]
     permissions:
       contents: read
       packages: read
@@ -91,9 +92,40 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build ISO
+      - name: Setup Bazzite Repo
+        id: setup-bazzite-repo
+        shell: bash
         run: |
-          sudo just build-iso ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }} latest
+          curl -Lo ${{ github.workspace }}/bazzite.repo https://copr.fedorainfracloud.org/coprs/ublue-os/bazzite/repo/fedora-${{ matrix.major_version }}/bazzite-org-bazzite-fedora-${{ matrix.major_version }}.repo
+
+      # Docker requires lowercase registry references
+      - name: Lowercase Registry
+        id: registry_case
+        uses: ASzc/change-string-case-action@d0603cd0a7dd490be678164909f65c7737470a7f # v6
+        with:
+          string: ${{ env.IMAGE_REGISTRY }}
+
+      - name: Build ISOs
+        uses: jasonn3/build-container-installer@c9ef3de33236e66781ec37bd0485e8009eaefe24 # v1.4.0
+        id: build
+        with:
+          arch: x86_64
+          image_name: ${{ env.IMAGE_NAME }}
+          image_repo: ${{ steps.registry_case.outputs.lowercase }}
+          variant: 'Kinoite'
+          version: ${{ matrix.major_version }}
+          image_tag: ${{ env.DEFAULT_TAG }}
+          secure_boot_key_url: '${{ github.server_url }}/${{ github.repository_owner }}/bazzite/raw/main/secure_boot.der'
+          enrollment_password: 'universalblue'
+          iso_name: ${{ env.IMAGE_NAME }}-${{ inputs.platform }}.iso
+          enable_cache_dnf: "false"
+          enable_cache_skopeo: "false"
+          # flatpak_remote_refs_dir: ${{ steps.generate-flatpak-dir-shortname.outputs.flatpak-dir-shortname }}
+          enable_flatpak_dependencies: "false"
+          extra_boot_params: ${{ steps.generate-extra-params.outputs.extra-boot-params }}
+          # additional_templates: '/github/workspace/installer/lorax_templates/remove_root_password_prompt.tmpl /github/workspace/installer/lorax_templates/set_default_user.tmpl'
+          # repos: '/github/workspace/bazzite.repo /etc/yum.repos.d/fedora.repo /etc/yum.repos.d/fedora-updates.repo'
+
 
       # - name: Build disk images
       #   id: build
@@ -110,11 +142,12 @@ jobs:
         if: inputs.upload-to-s3 != true && github.event_name != 'pull_request'
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
-          path: ${{ steps.build.outputs.output-directory }}
+          name: ${{ env.IMAGE_NAME }}-iso
+          path: |
+            bazziteos-amd64.iso
+            bazziteos-amd64.iso-CHECKSUM
           if-no-files-found: error
-          retention-days: 0
-          compression-level: 0
-          overwrite: true
+          retention-days: 10
       
       - name: Upload to S3
         if: inputs.upload-to-s3 == true && github.event_name != 'pull_request'

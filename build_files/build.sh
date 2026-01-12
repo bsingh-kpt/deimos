@@ -5,6 +5,7 @@ set -ouex pipefail
 ### Definitions ###
 YUBICO_AUTHENTICATOR_VERSION=7.3.0
 TABBY_VERSION=1.0.229
+PROTONMAL_VERSION=1.12.0
 
 ### Image metadata and verification
 cp /ctx/cosign.pub /etc/pki/containers/bsingh-kpt.pub
@@ -84,12 +85,17 @@ wget https://github.com/Eugeny/tabby/releases/download/v$TABBY_VERSION/tabby-$TA
 dnf5 install -y /tmp/tabby-$TABBY_VERSION-linux-x64.rpm
 rm -f /tmp/tabby-$TABBY_VERSION-linux-x64.rpm
 
+# Install ProtonMail
+wget https://proton.me/download/mail/linux/$PROTONMAL_VERSION/ProtonMail-desktop-beta.rpm -O /tmp/ProtonMail-desktop-beta.rpm
+dnf5 install -y /tmp/ProtonMail-desktop-beta.rpm
+rm -f /tmp/ProtonMail-desktop-beta.rpm
+
 # Disable COPR
 # dnf5 -y copr disable ublue-os/staging
 
 ## Non dnf installations
 # Install Yubico Authenticator
-wget https://developers.yubico.com/yubioath-flutter/Releases/yubico-authenticator-$YUBICO_AUTHENTICATOR_VERSION-linux.tar.gz -O /tmp/tyubico-authenticator-$YUBICO_AUTHENTICATOR_VERSION-linux.tar.gz
+wget https://developers.yubico.com/yubioath-flutter/Releases/yubico-authenticator-$YUBICO_AUTHENTICATOR_VERSION-linux.tar.gz -O /tmp/yubico-authenticator-$YUBICO_AUTHENTICATOR_VERSION-linux.tar.gz
 tar -xvf /tmp/yubico-authenticator-$YUBICO_AUTHENTICATOR_VERSION-linux.tar.gz -C /opt/
 rm -f /tmp/yubico-authenticator-$YUBICO_AUTHENTICATOR_VERSION-linux.tar.gz
 sed -e "s|@EXEC_PATH|/opt/yubico-authenticator-$YUBICO_AUTHENTICATOR_VERSION-linux|g" \

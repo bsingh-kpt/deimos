@@ -49,34 +49,35 @@ EOF
 
 ### INSTALL PACKAGES SECTION - START ###
 # Enable COPR
-dnf5 -y copr enable ublue-os/staging
+# dnf5 -y copr enable ublue-os/staging
+curl -Lo /etc/yum.repos.d/hardware:razer.repo https://openrazer.github.io/hardware:razer.repo
 
 # Standard -dx tools minus the handheld overhead
 dnf5 install -y \
-    code \
-    distrobox \
     docker-compose \
     podman-docker \
     git-delta \
     neovim \
-    tmux
+	ckb-next polychromatic \
+	openrazer-meta openrazer-daemon \
+	crystal-dock
 
 # Additional SW
 dnf5 install -y \
-	yubikey-manager \
-	yubico-piv-tool \
+	yubikey-manager yubico-piv-tool pam_yubico \
+	yubikey-manager-qt yubikey-personalization-gui \
 	opensc \
 	libfido2 \
 	pam-u2f pamu2fcfg \
-	sbsigntools \
-	crystal-dock
+	sbsigntools
 
 dnf5 install -y \
 	vlc
 
-# Install openrazer-daemon
-curl -Lo /etc/yum.repos.d/hardware:razer.repo https://openrazer.github.io/hardware:razer.repo
-dnf5 install -y openrazer-daemon
+# Instal VS Code
+wget "https://code.visualstudio.com/sha/download?build=stable&os=linux-rpm-x64" -O /tmp/vscode-latest.rpm
+dnf5 install -y /tmp/vscode-latest.rpm
+rm -f /tmp/vscode-latest.rpm
 
 # Install Tabby
 wget https://github.com/Eugeny/tabby/releases/download/v$TABBY_VERSION/tabby-$TABBY_VERSION-linux-x64.rpm -O /tmp/tabby-$TABBY_VERSION-linux-x64.rpm
@@ -84,7 +85,7 @@ dnf5 install -y /tmp/tabby-$TABBY_VERSION-linux-x64.rpm
 rm -f /tmp/tabby-$TABBY_VERSION-linux-x64.rpm
 
 # Disable COPR
-dnf5 -y copr disable ublue-os/staging
+# dnf5 -y copr disable ublue-os/staging
 
 ## Non dnf installations
 # Install Yubico Authenticator

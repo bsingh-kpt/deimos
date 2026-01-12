@@ -2,11 +2,69 @@
 
 set -ouex pipefail
 
+### Definitions ###
+YUBICO_AUTHENTICATOR_VERSION=7.3.0
+TABBY_VERSION=1.0.229
+
+### Image metadata and verification
+cp /ctx/cosign.pub /etc/pki/containers/bsingh-kpt.pub
+cat <<'EOF' >>/etc/containers/registries.d/bsingh-kpt.yaml
+docker:
+  ghcr.io/bsingh-kpt:
+    sigstoreSigned:
+      keyPath: /etc/pki/containers/bsingh-kpt.pub
+EOF
+
+IMAGEINFO_FEDORA_VERSION=$(grep '"fedora-version":' /usr/share/ublue-os/image-info.json | cut -d '"' -f 4)
+IMAGEINFO_VERSION=$(grep '"version":' /usr/share/ublue-os/image-info.json | cut -d '"' -f 4)
+IMAGEINFO_VERSION_PRETTY=$(grep '"version-pretty":' /usr/share/ublue-os/image-info.json | cut -d '"' -f 4)
+IMAGEINFO_COMMIT_ID=${IMAGE_COMMIT_ID:-unknown}
+case "${GITHUB_REF_NAME}" in
+  "main")
+    IMAGEINFO_IMAGE_TAG="latest"
+    ;;
+  "stable")
+    IMAGEINFO_IMAGE_TAG="stable"
+    ;;
+  *)
+    # Fallback for feature branches or empty variables
+    IMAGEINFO_IMAGE_TAG="${GITHUB_REF_NAME:-dirty}"
+    ;;
+esac
+cat <<EOF >>/usr/share/ublue-os/image-info.json
+{
+  "image-name": "bazziteos",
+  "image-vendor": "bsingh-kpt",
+  "image-ref": "ostree-image-signed:docker://ghcr.io/bsingh-kpt/bazziteos",
+  "image-tag": "$IMAGEINFO_IMAGE_TAG",
+  "image-branch": "main",
+  "image-commit-id": "$IMAGEINFO_COMMIT_ID",
+  "base-image-name": "bazzite-nvidia",
+  "fedora-version": "$IMAGEINFO_FEDORA_VERSION",
+  "version": "$IMAGEINFO_VERSION",
+  "version-pretty": "$IMAGEINFO_VERSION_PRETTY"
+}
+EOF
+###
+
 ### INSTALL PACKAGES SECTION - START ###
 # Enable COPR
 dnf5 -y copr enable ublue-os/staging
+
+# Standard -dx tools minus the handheld overhead
+dnf5 install -y \
+    code \
+    distrobox \
+    docker-compose \
+    podman-docker \
+    git-delta \
+    neovim \
+    tmux
+
+# Additional SW
 dnf5 install -y \
 	yubikey-manager \
+	yubico-piv-tool \
 	opensc \
 	libfido2 \
 	pam-u2f pamu2fcfg \
@@ -16,15 +74,27 @@ dnf5 install -y \
 dnf5 install -y \
 	vlc
 
-# Download and install tabby
-wget https://github.com/Eugeny/tabby/releases/download/v1.0.229/tabby-1.0.229-linux-x64.rpm -O /tmp/tabby-1.0.229-linux-x64.rpm
-dnf5 install -y /tmp/tabby-1.0.229-linux-x64.rpm
+# Install openrazer-daemon
+curl -Lo /etc/yum.repos.d/hardware:razer.repo https://openrazer.github.io/hardware:razer.repo
+dnf5 install -y openrazer-daemon
+
+# Install Tabby
+wget https://github.com/Eugeny/tabby/releases/download/v$TABBY_VERSION/tabby-$TABBY_VERSION-linux-x64.rpm -O /tmp/tabby-$TABBY_VERSION-linux-x64.rpm
+dnf5 install -y /tmp/tabby-$TABBY_VERSION-linux-x64.rpm
+rm -f /tmp/tabby-$TABBY_VERSION-linux-x64.rpm
 
 # Disable COPR
 dnf5 -y copr disable ublue-os/staging
 
 ## Non dnf installations
-# Install starship prompt binary
+# Install Yubico Authenticator
+wget https://developers.yubico.com/yubioath-flutter/Releases/yubico-authenticator-$YUBICO_AUTHENTICATOR_VERSION-linux.tar.gz -O /tmp/tyubico-authenticator-$YUBICO_AUTHENTICATOR_VERSION-linux.tar.gz
+tar -xvf /tmp/yubico-authenticator-$YUBICO_AUTHENTICATOR_VERSION-linux.tar.gz -C /opt/
+rm -f /tmp/yubico-authenticator-$YUBICO_AUTHENTICATOR_VERSION-linux.tar.gz
+sed -e "s|@EXEC_PATH|/opt/yubico-authenticator-$YUBICO_AUTHENTICATOR_VERSION-linux|g" \
+    <"/opt/yubico-authenticator-$YUBICO_AUTHENTICATOR_VERSION-linux/linux_support/com.yubico.yubioath.desktop" \
+    >"/usr/share/applications/com.yubico.yubioath.desktop"
+# Install Starship
 curl -sS https://starship.rs/install.sh | sh -s -- --bin-dir /usr/bin/ -y
 
 ### INSTALL PACKAGES SECTION - END ###
@@ -44,6 +114,7 @@ mkdir -p /etc/skel/.config
 cp /ctx/config/starship.toml /etc/skel/.config/starship.toml
 cp /ctx/config/plasmashellrc /etc/skel/.config/plasmashellrc
 cp /ctx/config/appletrc /etc/skel/.config/plasma-org.kde.plasma.desktop-appletsrc
+cp -r /ctx/config/crystal-dock-2 /etc/skel/.crystal-dock-2
 
 # Deploy Widgets
 mkdir -p /usr/share/plasma/plasmoids

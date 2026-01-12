@@ -5,9 +5,15 @@ on:
     types: [completed]
     branches: [main]
 
+env:
+  IMAGE_NAME: ${{ github.event.repository.name }}
+  IMAGE_REGISTRY: "ghcr.io/${{ github.repository_owner }}"
+  DEFAULT_TAG: "stable"
+  PLATFORM: "amd64"
+
 jobs:
   on-success:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     permissions:
       contents: write # Crucial for creating the release
@@ -19,7 +25,7 @@ jobs:
       - name: Download Build Artifacts
         uses: actions/download-artifact@v4
         with:
-          name: Build ISOs
+          name: Build ISO
           run-id: ${{ github.event.workflow_run.id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -29,5 +35,5 @@ jobs:
         with:
           tag_name: "release-${{ github.event.workflow_run.run_number }}"
           files: |
-            bazziteos-amd64.iso
-            bazziteos-amd64.iso-CHECKSUM
+            ${{ env.IMAGE_NAME }}-${{ env.DEFAULT_TAG }-${{ env.PLATFORM }}.iso
+            ${{ env.IMAGE_NAME }}-${{ env.DEFAULT_TAG }-${{ env.PLATFORM }}.iso-CHECKSUM

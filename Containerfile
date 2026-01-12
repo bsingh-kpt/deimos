@@ -1,18 +1,16 @@
 # Allow build scripts to be referenced without being copied into the final image
 FROM scratch AS ctx
 COPY build_files /
+COPY cosign.pub /
 
 # Base Image
-FROM ghcr.io/ublue-os/bazzite-dx-nvidia:stable
+FROM ghcr.io/ublue-os/bazzite-nvidia-open:stable
 
-## Other possible base images include:
-# FROM ghcr.io/ublue-os/bazzite:latest
-# FROM ghcr.io/ublue-os/bluefin-nvidia:stable
-# 
-# ... and so on, here are more base images
-# Universal Blue Images: https://github.com/orgs/ublue-os/packages
-# Fedora base image: quay.io/fedora/fedora-bootc:41
-# CentOS base images: quay.io/centos-bootc/centos-bootc:stream10
+ARG IMAGE_COMMIT_ID
+ARG GITHUB_REF_NAME
+
+ENV IMAGE_COMMIT_ID=${IMAGE_COMMIT_ID}
+ENV GITHUB_REF_NAME=${GITHUB_REF_NAME}
 
 ### [IM]MUTABLE /opt
 ## Some bootable images, like Fedora, have /opt symlinked to /var/opt, in order to

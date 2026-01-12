@@ -19,10 +19,10 @@ on:
         type: choice
         options:
           - amd64
-          - arm64
+          # - arm64
   pull_request:
     branches:
-      - main
+      - stable
     paths:
       - './disk_config/disk.toml'
       - './disk_config/iso.toml'
@@ -31,7 +31,7 @@ on:
 env:
   IMAGE_NAME: ${{ github.event.repository.name }} # output of build.yml, keep in sync
   IMAGE_REGISTRY: "ghcr.io/${{ github.repository_owner }}"  # do not edit
-  DEFAULT_TAG: "latest"
+  DEFAULT_TAG: "stable"
   BIB_IMAGE: "quay.io/centos-bootc/bootc-image-builder:latest" # "quay.io/centos-bootc/bootc-image-builder:latest" - see https://github.com/osbuild/bootc-image-builder/pull/954
 
 concurrency:
@@ -47,7 +47,7 @@ jobs:
       matrix:
         disk-type: ["anaconda-iso"]
         # disk-type: ["qcow2", "anaconda-iso"]
-        major_version: [43]
+        major_version: [41]
     permissions:
       contents: read
       packages: read
@@ -105,7 +105,7 @@ jobs:
         with:
           string: ${{ env.IMAGE_REGISTRY }}
 
-      - name: Build ISOs
+      - name: Build ISO
         uses: jasonn3/build-container-installer@c9ef3de33236e66781ec37bd0485e8009eaefe24 # v1.4.0
         id: build
         with:
@@ -117,7 +117,7 @@ jobs:
           image_tag: ${{ env.DEFAULT_TAG }}
           secure_boot_key_url: '${{ github.server_url }}/${{ github.repository_owner }}/bazzite/raw/main/secure_boot.der'
           enrollment_password: 'universalblue'
-          iso_name: ${{ env.IMAGE_NAME }}-${{ inputs.platform }}.iso
+          iso_name: ${{ env.IMAGE_NAME }}-${{ env.DEFAULT_TAG }-${{ inputs.platform }}.iso
           enable_cache_dnf: "false"
           enable_cache_skopeo: "false"
           # flatpak_remote_refs_dir: ${{ steps.generate-flatpak-dir-shortname.outputs.flatpak-dir-shortname }}
@@ -144,8 +144,8 @@ jobs:
         with:
           name: ${{ env.IMAGE_NAME }}-iso
           path: |
-            bazziteos-amd64.iso
-            bazziteos-amd64.iso-CHECKSUM
+            ${{ env.IMAGE_NAME }}-${{ env.DEFAULT_TAG }-${{ inputs.platform }}.iso
+            ${{ env.IMAGE_NAME }}-${{ env.DEFAULT_TAG }-${{ inputs.platform }}-CHECKSUM
           if-no-files-found: error
           retention-days: 10
           compression-level: 0

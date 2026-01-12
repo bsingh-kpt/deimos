@@ -8,6 +8,7 @@ fi
 # Define apps (ID | Display Name | WMClass)
 # Most Flatpaks use the last part of their ID as the WMClass, but some (Brave/Firefox) are unique.
 APPS=(
+	"app.polychromatic.controller" "Polychromatic" "polychromatic"
 	"com.brave.Browser" "Brave Browser" "brave-browser"
 	"org.mozilla.firefox" "Firefox" "firefox"
 	"org.keepassxc.KeePassXC" "KeePassXC" "KeePassXC"

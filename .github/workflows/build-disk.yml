@@ -49,7 +49,7 @@ jobs:
         # disk-type: ["qcow2", "anaconda-iso"]
         major_version: [43]
     permissions:
-      contents: write
+      contents: read
       packages: read
       id-token: write
 
@@ -148,6 +148,7 @@ jobs:
             bazziteos-amd64.iso-CHECKSUM
           if-no-files-found: error
           retention-days: 10
+          compression-level: 0
       
       - name: Upload to S3
         if: inputs.upload-to-s3 == true && github.event_name != 'pull_request'
@@ -164,25 +165,3 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y rclone
           rclone copy $SOURCE_DIR S3:${{ secrets.S3_BUCKET_NAME }}
-
-      - name: version
-        run: echo "::set-output name=version::v0.0.1-alpha"
-        id: version
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v2
-        id: create_release
-        with:
-          draft: false
-          prerelease: true
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
-          token: ${{ secrets.GITHUB_TOKEN }}
-          generate_release_notes: true
-          # release_name: ${{ steps.version.outputs.version }}
-          # body: This is first alpha release. It is pre-release for testing only.
-          files: |
-            bazziteos-amd64.iso
-            bazziteos-amd64.iso-CHECKSUM
-        # env:
-        #   GITHUB_TOKEN: ${{ github.token }}

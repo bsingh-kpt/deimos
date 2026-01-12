@@ -1,0 +1,33 @@
+name: Create Release
+on:
+  workflow_run:
+    workflows: ["Build disk images"] # Must match the 'name' of your Build workflow
+    types: [completed]
+    branches: [main]
+
+jobs:
+  on-success:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    permissions:
+      contents: write # Crucial for creating the release
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 1. Download artifact from the previous workflow run
+      - name: Download Build Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: Build ISOs
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      # 2. Create the Release
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: "release-${{ github.event.workflow_run.run_number }}"
+          files: |
+            bazziteos-amd64.iso
+            bazziteos-amd64.iso-CHECKSUM

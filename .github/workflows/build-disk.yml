@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       branch:
-        description: "Select branch to fetch artifacts from"
+        description: "Target Branch"
         required: true
         default: "stable"
         type: choice
@@ -22,7 +22,6 @@ on:
         type: choice
         options:
           - amd64
-          # - arm64
   pull_request:
     branches:
       - stable
@@ -45,7 +44,7 @@ concurrency:
 jobs:
   build:
     name: Build disk images
-    runs-on: ${{ inputs.platform == 'amd64' && 'ubuntu-24.04' || 'ubuntu-24.04-arm' }}
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:

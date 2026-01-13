@@ -1,19 +1,24 @@
 ---
 name: Build container image
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 on:
   pull_request:
     branches:
       - main
       - stable
   schedule:
-    - cron: '05 10 * * *'  # 10:05am UTC everyday
+    - cron: "05 10 * * *" # 10:05am UTC everyday
   push:
     branches:
       - main
       - stable
-      - 'feature/**'
+      - "feature/**"
     paths-ignore:
-      - '**/README.md'
+      - "**/README.md"
   workflow_dispatch:
 
 env:
@@ -22,11 +27,18 @@ env:
   IMAGE_LOGO_URL: "https://github.com/ublue-os/bazzite/blob/44ad0a73969365d3842896de25038c555a294bc6/repo_content/logo.png"
   IMAGE_NAME: "${{ github.event.repository.name }}"
   IMAGE_REGISTRY: "ghcr.io/${{ github.repository_owner }}"
-  DEFAULT_TAG: "latest"
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref || github.run_id }}-${{ inputs.brand_name}}-${{ inputs.stream_name }}
-  cancel-in-progress: true
+  # Logic for Container Tagging:
+  # 1. If PR to stable -> tag 'stable'
+  # 2. If PR to main -> tag 'latest'
+  # 3. If Push to main -> tag 'latest'
+  # 4. If Push to stable -> tag 'stable'
+  # 5. Fallback -> branch name (e.g. feature-xx)
+  IMAGE_TAG: >-
+    ${{ 
+      github.base_ref == 'stable' && 'stable' || 
+      (github.base_ref == 'main' && 'latest' || 
+      (github.ref_name == 'main' && 'latest' || github.ref_name)) 
+    }}
 
 jobs:
   build_push:
@@ -59,7 +71,7 @@ jobs:
 
         # Fallback to the remove-unwanted-software-action if github doesn't allocate enough space
         # See: https://github.com/ublue-os/container-storage-action/pull/11
-        continue-on-error: true 
+        continue-on-error: true
         with:
           target-dir: /var/lib/containers
           mount-opts: compress-force=zstd:2
@@ -82,7 +94,7 @@ jobs:
           tags: |
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
             type=raw,value=stable,enable=${{ github.ref == 'refs/heads/stable' }}
-            type=raw,value=${{ env.DEFAULT_TAG }}.{{date 'YYYYMMDD'}},enable=${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/stable' }}
+            type=raw,value=${{ env.IMAGE_TAG }}.{{date 'YYYYMMDD'}},enable=${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/stable' }}
             type=raw,value={{date 'YYYYMMDD'}},enable=${{ github.ref == 'refs/heads/main' }}
             type=sha,enable=${{ github.event_name == 'pull_request' }}
             type=ref,event=pr
@@ -97,7 +109,7 @@ jobs:
             org.opencontainers.image.title=${{ env.IMAGE_NAME }}
             org.opencontainers.image.url=https://github.com/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}/tree/${{ github.sha }}
             org.opencontainers.image.vendor=${{ github.repository_owner }}
-            org.opencontainers.image.version=${{ env.DEFAULT_TAG }}.{{date 'YYYYMMDD'}}
+            org.opencontainers.image.version=${{ env.IMAGE_TAG }}.{{date 'YYYYMMDD'}}
             io.artifacthub.package.deprecated=false
             io.artifacthub.package.keywords=${{ env.IMAGE_KEYWORDS }}
             io.artifacthub.package.license=Apache-2.0
@@ -132,8 +144,8 @@ jobs:
       #   uses: ublue-os/legacy-rechunk@a925083d9af7cb04b3e2a6e8c01bfa495f38b710 # v1.0.0
       #   with:
       #     rechunk: 'ghcr.io/ublue-os/legacy-rechunk:v1.0.0-x86_64'
-      #     ref: "localhost/${{ env.IMAGE_NAME }}:${{ env.DEFAULT_TAG }}"
-      #     prev-ref: "${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.DEFAULT_TAG }}"
+      #     ref: "localhost/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}"
+      #     prev-ref: "${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}"
       #     skip_compression: true
       #     version: ${{ env.CENTOS_VERSION }}
       #     labels: ${{ steps.metadata.outputs.labels }} # Rechunk strips out all the labels during build, this needs to be reapplied here with newline separator
@@ -179,7 +191,7 @@ jobs:
         uses: sigstore/cosign-installer@faadad0cce49287aee09b3a48701e75088a2c6ad # v4.0.0
         if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/stable' || startsWith(github.ref, 'refs/heads/feature/'))
         with:
-          cosign-release: 'v2.6.1'
+          cosign-release: "v2.6.1"
 
       - name: Sign container image
         if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/stable' || startsWith(github.ref, 'refs/heads/feature/'))

@@ -6,18 +6,13 @@ on:
     branches: [stable]
   workflow_dispatch:
     inputs:
-      # branch:
-      #   description: "Select branch to fetch artifacts from"
-      #   required: true
-      #   default: "stable"
-      #   type: choice
-      #   options: [stable, main]
       platform:
         description: "Architecture"
         required: true
         default: "amd64"
         type: choice
-        options: [amd64, arm64]
+        options:
+          - amd64
       version_tag:
         description: "Release Tag (e.g. v1.2.3)"
         required: true

@@ -1,39 +1,99 @@
 name: Create Release
 on:
   workflow_run:
-    workflows: ["Build disk images"] # Must match the 'name' of your Build workflow
+    workflows: ["Build disk images"]
     types: [completed]
-    branches: [main]
+    branches: [stable]
+  workflow_dispatch:
+    inputs:
+      # branch:
+      #   description: "Select branch to fetch artifacts from"
+      #   required: true
+      #   default: "stable"
+      #   type: choice
+      #   options: [stable, main]
+      platform:
+        description: "Architecture"
+        required: true
+        default: "amd64"
+        type: choice
+        options: [amd64, arm64]
+      version_tag:
+        description: "Release Tag (e.g. v1.2.3)"
+        required: true
+        type: string
+      upload_to_s3:
+        description: "Upload to S3 instead of splitting"
+        required: false
+        default: false
+        type: boolean
 
-env:
-  IMAGE_NAME: ${{ github.event.repository.name }}
-  IMAGE_REGISTRY: "ghcr.io/${{ github.repository_owner }}"
-  DEFAULT_TAG: "stable"
-  PLATFORM: "amd64"
+permissions:
+  contents: write
 
 jobs:
-  on-success:
+  release:
     runs-on: ubuntu-24.04
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
-    permissions:
-      contents: write # Crucial for creating the release
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 1. Download artifact from the previous workflow run
       - name: Download Build Artifacts
-        uses: actions/download-artifact@v4
+        uses: dawidd6/action-download-artifact@v3
         with:
-          name: Build ISO
-          run-id: ${{ github.event.workflow_run.id }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          workflow: "Build disk images"
+          name: build-iso-stable
+          # branch: ${{ github.event.inputs.branch || github.event.workflow_run.head_branch }}
+          branch: stable
+          run_id: ${{ github.event.workflow_run.id || '' }}
+          workflow_conclusion: success
 
-      # 2. Create the Release
+      - name: Process ISO
+        id: process
+        env:
+          S3_ENABLED: ${{ github.event.inputs.upload_to_s3 || 'false' }}
+          SELECTED_PLATFORM: ${{ github.event.inputs.platform || 'amd64' }}
+        run: |
+          LOWER_NAME=$(echo "${{ github.event.repository.name }}" | tr '[:upper:]' '[:lower:]')
+
+          ISO_FILENAME="${LOWER_NAME}-stable-${SELECTED_PLATFORM}.iso"
+
+          if [ ! -f "$ISO_FILENAME" ]; then
+            echo "Error: $ISO_FILENAME not found!"
+            ls -R
+            exit 1
+          fi
+          sha256sum "$ISO_FILENAME" > "${ISO_FILENAME}-CHECKSUM"
+
+          VERSION="${{ github.event.inputs.version_tag || format('v{0}', github.event.workflow_run.run_number) }}"
+
+          if [ "$S3_ENABLED" = "true" ]; then
+            echo "mode=s3" >> $GITHUB_OUTPUT
+            curl https://rclone.org/install.sh | sudo bash
+            rclone copy "$ISO_FILENAME" S3:${{ secrets.S3_BUCKET_NAME }}/${VERSION} \
+              --config <(printf "[S3]\ntype = s3\nprovider = ${{ secrets.S3_PROVIDER }}\naccess_key_id = ${{ secrets.S3_ACCESS_KEY_ID }}\nsecret_access_key = ${{ secrets.S3_SECRET_ACCESS_KEY }}\nendpoint = ${{ secrets.S3_ENDPOINT }}\nregion = ${{ secrets.S3_REGION }}")
+            echo "S3_LINK=Download: ${{ secrets.S3_ENDPOINT }}/${{ secrets.S3_BUCKET_NAME }}/${VERSION}/$ISO_FILENAME" >> $GITHUB_ENV
+          else
+            echo "mode=split" >> $GITHUB_OUTPUT
+            split -b 1900M "$ISO_FILENAME" "${ISO_FILENAME}.part-"
+          fi
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: "release-${{ github.event.workflow_run.run_number }}"
+          tag_name: ${{ github.event.inputs.version_tag || format('v{0}', github.event.workflow_run.run_number) }}
+          body: |
+            ## Bazzite Stable Build
+            ${{ env.S3_LINK || 'ISO split into parts below. Rejoin with `cat *.part-* > bazzite.iso`' }}
           files: |
-            ${{ env.IMAGE_NAME }}-${{ env.DEFAULT_TAG }-${{ env.PLATFORM }}.iso
-            ${{ env.IMAGE_NAME }}-${{ env.DEFAULT_TAG }-${{ env.PLATFORM }}.iso-CHECKSUM
+            *.part-*
+            *-CHECKSUM
+            ${{ steps.process.outputs.mode == 's3' && '' || '*.iso' }}
+
+      - name: Cleanup
+        if: always()
+        uses: geekyeggo/delete-artifact@v5
+        with:
+          name: build-iso-stable

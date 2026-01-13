@@ -9,7 +9,7 @@ PROTONMAL_VERSION=1.12.0
 
 ### Image metadata and verification
 cp /ctx/cosign.pub /etc/pki/containers/bsingh-kpt.pub
-cat <<'EOF' >>/etc/containers/registries.d/bsingh-kpt.yaml
+cat <<'EOF' >/etc/containers/registries.d/bsingh-kpt.yaml
 docker:
   ghcr.io/bsingh-kpt:
     sigstoreSigned:
@@ -21,18 +21,18 @@ IMAGEINFO_VERSION=$(grep '"version":' /usr/share/ublue-os/image-info.json | cut 
 IMAGEINFO_VERSION_PRETTY=$(grep '"version-pretty":' /usr/share/ublue-os/image-info.json | cut -d '"' -f 4)
 IMAGEINFO_COMMIT_ID=${IMAGE_COMMIT_ID:-unknown}
 case "${GITHUB_REF_NAME}" in
-  "main")
-    IMAGEINFO_IMAGE_TAG="latest"
-    ;;
-  "stable")
-    IMAGEINFO_IMAGE_TAG="stable"
-    ;;
-  *)
-    # Fallback for feature branches or empty variables
-    IMAGEINFO_IMAGE_TAG="${GITHUB_REF_NAME:-dirty}"
-    ;;
+"main")
+	IMAGEINFO_IMAGE_TAG="latest"
+	;;
+"stable")
+	IMAGEINFO_IMAGE_TAG="stable"
+	;;
+*)
+	# Fallback for feature branches or empty variables
+	IMAGEINFO_IMAGE_TAG="${GITHUB_REF_NAME:-dirty}"
+	;;
 esac
-cat <<EOF >>/usr/share/ublue-os/image-info.json
+cat <<EOF >/usr/share/ublue-os/image-info.json
 {
   "image-name": "bazziteos",
   "image-vendor": "bsingh-kpt",
@@ -55,10 +55,13 @@ curl -Lo /etc/yum.repos.d/hardware:razer.repo https://openrazer.github.io/hardwa
 
 # Standard -dx tools minus the handheld overhead
 dnf5 install -y \
-    docker-compose \
-    podman-docker \
-    git-delta \
-    neovim \
+	libcgroup \
+	docker-ce docker-ce-cli \
+	docker-compose docker-compose-plugin docker-buildx-plugin \
+	containerd.io \
+	podman-docker podman-tui podman-machine \
+	git-delta \
+	neovim \
 	ckb-next polychromatic \
 	openrazer-meta openrazer-daemon \
 	crystal-dock
@@ -99,8 +102,8 @@ wget https://developers.yubico.com/yubioath-flutter/Releases/yubico-authenticato
 tar -xvf /tmp/yubico-authenticator-$YUBICO_AUTHENTICATOR_VERSION-linux.tar.gz -C /opt/
 rm -f /tmp/yubico-authenticator-$YUBICO_AUTHENTICATOR_VERSION-linux.tar.gz
 sed -e "s|@EXEC_PATH|/opt/yubico-authenticator-$YUBICO_AUTHENTICATOR_VERSION-linux|g" \
-    <"/opt/yubico-authenticator-$YUBICO_AUTHENTICATOR_VERSION-linux/linux_support/com.yubico.yubioath.desktop" \
-    >"/usr/share/applications/com.yubico.yubioath.desktop"
+	<"/opt/yubico-authenticator-$YUBICO_AUTHENTICATOR_VERSION-linux/linux_support/com.yubico.yubioath.desktop" \
+	>"/usr/share/applications/com.yubico.yubioath.desktop"
 # Install Starship
 curl -sS https://starship.rs/install.sh | sh -s -- --bin-dir /usr/bin/ -y
 
@@ -165,7 +168,7 @@ EOF
 ### USER CONF SECTION - START ###
 ## Crystal dock startup
 mkdir -p /etc/xdg/autostart
-cat <<'EOF' >>/etc/xdg/autostart/crystal-dock.desktop
+cat <<'EOF' >/etc/xdg/autostart/crystal-dock.desktop
 [Desktop Entry]
 Name=Crystal Dock
 Comment=Pro-animation dock for Linux

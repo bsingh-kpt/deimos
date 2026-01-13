@@ -92,9 +92,9 @@ jobs:
         id: metadata
         with:
           tags: |
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
-            type=raw,value=stable,enable=${{ github.ref == 'refs/heads/stable' }}
-            type=raw,value=${{ env.IMAGE_TAG }}.{{date 'YYYYMMDD'}},enable=${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/stable' }}
+            type=raw,value=latest,enable=${{ github.base_ref == 'main' }}
+            type=raw,value=stable,enable=${{ github.base_ref == 'stable' }}
+            type=raw,value=${{ env.IMAGE_TAG }}.{{date 'YYYYMMDD'}},enable=${{ github.base_ref == 'main' || github.ref == 'stable' }}
             type=raw,value={{date 'YYYYMMDD'}},enable=${{ github.ref == 'refs/heads/main' }}
             type=sha,enable=${{ github.event_name == 'pull_request' }}
             type=ref,event=pr

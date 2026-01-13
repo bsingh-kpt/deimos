@@ -6,6 +6,10 @@ permissions:
   packages: read
 
 on:
+  workflow_run:
+    workflows: ["Build container image"]
+    types:
+      - completed
   workflow_dispatch:
     inputs:
       branch:
@@ -25,7 +29,6 @@ on:
   pull_request:
     branches:
       - stable
-      - main
     paths:
       - './disk_config/disk.toml'
       - './disk_config/iso.toml'
@@ -34,17 +37,28 @@ on:
 env:
   IMAGE_NAME: ${{ github.event.repository.name }} # output of build.yml, keep in sync
   IMAGE_REGISTRY: "ghcr.io/${{ github.repository_owner }}"  # do not edit
-  IMAGE_TAG: ${{ (github.event.inputs.branch || github.ref_name) == 'main' && 'latest' || (github.event.inputs.branch || github.ref_name) }}
+  # Logic: 
+  # 1. If triggered by another workflow, check THAT workflow's event type
+  # 2. If it was a PR, use pr-<number>
+  # 3. If it was a push to main, use latest
+  # 4. Fallback to ref_name
+  IMAGE_TAG: >-
+    ${{ 
+      github.event.workflow_run.event == 'pull_request' && format('pr-{0}', github.event.workflow_run.pull_request.number) || 
+      (github.event.workflow_run.head_branch == 'main' && 'latest' || 
+      (github.ref_name == 'main' && 'latest' || github.ref_name))
+    }}
   BIB_IMAGE: "quay.io/centos-bootc/bootc-image-builder:latest" # "quay.io/centos-bootc/bootc-image-builder:latest" - see https://github.com/osbuild/bootc-image-builder/pull/954
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref || github.run_id }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
   build:
     name: Build disk images
     runs-on: ubuntu-24.04
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
     strategy:
       fail-fast: false
       matrix:

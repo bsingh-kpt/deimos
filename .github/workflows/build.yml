@@ -1,10 +1,6 @@
 ---
 name: Build container image
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
-
 on:
   pull_request:
     branches:
@@ -27,18 +23,20 @@ env:
   IMAGE_LOGO_URL: "https://github.com/ublue-os/bazzite/blob/44ad0a73969365d3842896de25038c555a294bc6/repo_content/logo.png"
   IMAGE_NAME: "${{ github.event.repository.name }}"
   IMAGE_REGISTRY: "ghcr.io/${{ github.repository_owner }}"
-  # Logic for Container Tagging:
-  # 1. If PR to stable -> tag 'stable'
-  # 2. If PR to main -> tag 'latest'
-  # 3. If Push to main -> tag 'latest'
-  # 4. If Push to stable -> tag 'stable'
-  # 5. Fallback -> branch name (e.g. feature-xx)
+  # Logic:
+  # 1. If it's a Pull Request, use 'pr-<number>'
+  # 2. If it's a Push to 'main', use 'latest'
+  # 3. If it's a Push/Merge to 'stable', use 'stable'
+  # 4. Fallback to branch name
   IMAGE_TAG: >-
     ${{ 
-      github.base_ref == 'stable' && 'stable' || 
-      (github.base_ref == 'main' && 'latest' || 
-      (github.ref_name == 'main' && 'latest' || github.ref_name)) 
+      github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || 
+      (github.ref_name == 'main' && 'latest' || github.ref_name) 
     }}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build_push:
@@ -92,10 +90,9 @@ jobs:
         id: metadata
         with:
           tags: |
-            type=raw,value=latest,enable=${{ github.base_ref == 'main' }}
-            type=raw,value=stable,enable=${{ github.base_ref == 'stable' }}
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+            type=raw,value=stable,enable=${{ github.ref == 'refs/heads/stable' }}
             type=raw,value=${{ env.IMAGE_TAG }}.{{date 'YYYYMMDD'}},enable=${{ github.base_ref == 'main' || github.ref == 'stable' }}
-            type=raw,value={{date 'YYYYMMDD'}},enable=${{ github.ref == 'refs/heads/main' }}
             type=sha,enable=${{ github.event_name == 'pull_request' }}
             type=ref,event=pr
             type=ref,event=branch,enable=${{ startsWith(github.ref, 'refs/heads/feature/') }}

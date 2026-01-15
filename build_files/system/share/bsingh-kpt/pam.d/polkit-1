@@ -1,0 +1,9 @@
+#%PAM-1.0
+auth       required                   pam_env.so
+auth       requisite                  pam_unix.so nullok try_first_pass
+auth       [success=1 default=ignore] pam_succeed_if.so user ingroup nomfa
+auth       required                   pam_u2f.so cue origin=pam://bsingh-kpt appid=pam://bsingh-kpt
+
+account    include      system-auth
+password   include      system-auth
+session    include      system-auth

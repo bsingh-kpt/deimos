@@ -40,7 +40,7 @@ cat <<EOF >/usr/share/ublue-os/image-info.json
   "image-tag": "$IMAGEINFO_IMAGE_TAG",
   "image-branch": "main",
   "image-commit-id": "$IMAGEINFO_COMMIT_ID",
-  "base-image-name": "bazzite-nvidia",
+  "base-image-name": "bazzite-nvidia-open",
   "fedora-version": "$IMAGEINFO_FEDORA_VERSION",
   "version": "$IMAGEINFO_VERSION",
   "version-pretty": "$IMAGEINFO_VERSION_PRETTY"
@@ -52,6 +52,7 @@ EOF
 # Enable COPR
 # dnf5 -y copr enable ublue-os/staging
 curl -Lo /etc/yum.repos.d/hardware:razer.repo https://openrazer.github.io/hardware:razer.repo
+curl -fsSLo /etc/yum.repos.d/brave-browser.repo https://brave-browser-rpm-release.s3.brave.com/brave-browser.repo
 
 # Standard -dx tools minus the handheld overhead
 dnf5 install -y \
@@ -62,7 +63,8 @@ dnf5 install -y \
 	neovim \
 	ckb-next polychromatic \
 	openrazer-meta openrazer-daemon \
-	crystal-dock
+	brave-browser \
+	keepassxc
 
 # Additional SW
 dnf5 install -y \
@@ -108,9 +110,6 @@ curl -sS https://starship.rs/install.sh | sh -s -- --bin-dir /usr/bin/ -y
 ### INSTALL PACKAGES SECTION - END ###
 
 ### SYSTEM CONFIGURATION SECTION - START ###
-# Configure Yubikey for Sudo (PAM)
-sed -i '3i auth       required     pam_u2f.so cue' /etc/pam.d/sudo
-
 ## System services
 systemctl enable podman.socket
 systemctl disable ublue-update.timer
@@ -118,33 +117,29 @@ systemctl mask ublue-update.service
 
 ## Deploy KDE Layouts & Widgets
 mkdir -p /etc/skel/.config
-# Reference /ctx/ because that's where the bind mount is
-cp /ctx/config/starship.toml /etc/skel/.config/starship.toml
-cp /ctx/config/plasmashellrc /etc/skel/.config/plasmashellrc
-cp /ctx/config/appletrc /etc/skel/.config/plasma-org.kde.plasma.desktop-appletsrc
-cp -r /ctx/config/crystal-dock-2 /etc/skel/.crystal-dock-2
+cp /ctx/config/user/starship.toml /etc/skel/.config/starship.toml
+cp /ctx/config/user/plasmashellrc /etc/skel/.config/plasmashellrc
+cp /ctx/config/user/appletsrc /etc/skel/.config/plasma-org.kde.plasma.desktop-appletsrc
+cp /ctx/config/user/krunnerrc /etc/skel/.config/krunnerrc
+
+# Terminal config
+mkdir -p /etc/skel/.config/dconf
+cp /ctx/config/user/dconf_user /etc/skel/.config/dconf/user
 
 # Deploy Widgets
 mkdir -p /usr/share/plasma/plasmoids
-cp -r /ctx/widgets/KdeControlStation /usr/share/plasma/plasmoids/
-cp -r /ctx/widgets/luisbocanegra.panel.colorizer /usr/share/plasma/plasmoids/
-cp -r /ctx/widgets/org.kde.windowtitle /usr/share/plasma/plasmoids/
-cp -r /ctx/widgets/zayron.chaac.weather /usr/share/plasma/plasmoids/
-cp -r /ctx/widgets/zayron.simple.separator /usr/share/plasma/plasmoids/
+cp -r /ctx/system/share/plasma/plasmoids/* /usr/share/plasma/plasmoids/
 
-## Install Secure Boot Signing Hook
+# Install Secure Boot Signing Hook
 cp /ctx/scripts/yubikey-sign-kernel /usr/bin/yubikey-sign-kernel
 chmod +x /usr/bin/yubikey-sign-kernel
 
-## Create 'just' command for Manual Updates
+# Copy 'just' script for custom commands
 mkdir -p /usr/share/ublue-os/just
-cat <<'EOF' >>/usr/share/ublue-os/just/60-custom.just
-# Perform manual system update and sign with Yubikey
-manual-update:
-    rpm-ostree upgrade
-    sudo /usr/bin/yubikey-sign-kernel
-    echo "Update complete. Please reboot."
-EOF
+cp -f /ctx/scripts/bsingh-kpt.just /usr/share/ublue-os/just/60-bsingh-kpt.just
+
+# Copy bsingh-kpt data files to /usr/share
+cp -r /ctx/system/share/bsingh-kpt /usr/share/
 
 ## bashrc modifications
 # Fixes flatpak apps KDE icons in crystal-dock
@@ -164,21 +159,9 @@ EOF
 ### SYSTEM CONF SECTION - END ###
 
 ### USER CONF SECTION - START ###
-## Crystal dock startup
-mkdir -p /etc/xdg/autostart
-cat <<'EOF' >/etc/xdg/autostart/crystal-dock.desktop
-[Desktop Entry]
-Name=Crystal Dock
-Comment=Pro-animation dock for Linux
-Exec=crystal-dock
-Terminal=false
-Type=Application
-Icon=crystal-dock
-Categories=System;
-X-KDE-autostart-after=panel
-EOF
+## Add user conf here
 ## bashrc modifications
-### SYSTEM CONF SECTION - END ###
+### USER CONF SECTION - END ###
 
 ### POST INSTALL SECTION - START ###
 # Post install software setup
@@ -193,25 +176,3 @@ Terminal=false
 X-KDE-autostart-after=panel
 EOF
 ### POST INSTALL SECTION - END ###
-
-### DELL test pc related only. REMOVE AFTER TESTING ### START
-# # Blacklist TPM modules to stop the 45s timeouts
-# printf "blacklist tpm_tis\nblacklist tpm_crb\nblacklist tpm\n" >/etc/modprobe.d/blacklist-tpm.conf
-# # Force dracut to omit TPM modules in the initramfs
-# mkdir -p /usr/lib/dracut/dracut.conf.d &&
-# 	echo 'omit_dracutmodules+=" tpm2-tss "' >/usr/lib/dracut/dracut.conf.d/omit-tpm.conf
-# systemctl mask dev-tpmrm0.device tpm2.target
-# # Install xrdp
-# dnf5 install -y xrdp
-# systemctl enable xrdp
-# cat <<'EOF' >>/usr/lib/firewalld/zones/public.xml
-# <?xml version="1.0" encoding="utf-8"?>
-# <zone>
-#   <short>Public</short>
-#   <description>For use in public areas.</description>
-#   <service name="ssh"/>
-#   <service name="dhcpv6-client"/>
-#   <port port="3389" protocol="tcp"/>
-# </zone>
-# EOF
-### DELL test pc related only. REMOVE AFTER TESTING ### END

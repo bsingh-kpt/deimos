@@ -1,0 +1,18 @@
+#%PAM-1.0
+# 1. Standard environment setup
+auth       required     pam_env.so
+auth       required     pam_faildelay.so delay=2000000
+
+# 2. The Password Check (Manual call to avoid system-auth short-circuits)
+# We use 'requisite' so if the password is wrong, it stops immediately.
+auth       requisite    pam_unix.so nullok try_first_pass
+
+# 3. The Yubikey Check
+# Ensure this matches the AppID/Origin you used in pamu2fcfg
+auth       [success=1 default=ignore]   pam_succeed_if.so user ingroup nomfa
+auth       required                     pam_u2f.so cue origin=pam://bsingh-kpt appid=pam://bsingh-kpt
+account    include                      system-auth
+password   include                      system-auth
+session    optional                     pam_keyinit.so revoke
+session    required                     pam_limits.so
+session    include                      system-auth

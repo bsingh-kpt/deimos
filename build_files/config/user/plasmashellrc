@@ -1,5 +1,5 @@
 [PlasmaTransientsConfig]
-PreloadWeight=10
+PreloadWeight=34
 
 [PlasmaViews][Panel 102]
 floating=1
@@ -30,6 +30,41 @@ panelVisibility=0
 
 [PlasmaViews][Panel 154][Defaults]
 thickness=66
+
+[PlasmaViews][Panel 171]
+alignment=132
+floating=1
+panelLengthMode=1
+panelOpacity=1
+
+[PlasmaViews][Panel 171][Defaults]
+thickness=64
+
+[PlasmaViews][Panel 174]
+alignment=132
+floating=1
+panelLengthMode=1
+panelOpacity=1
+
+[PlasmaViews][Panel 174][Defaults]
+thickness=64
+
+[PlasmaViews][Panel 176]
+alignment=132
+floating=1
+panelLengthMode=1
+panelOpacity=1
+
+[PlasmaViews][Panel 176][Defaults]
+thickness=64
+
+[PlasmaViews][Panel 178]
+floating=1
+panelOpacity=1
+panelVisibility=0
+
+[PlasmaViews][Panel 178][Defaults]
+thickness=32
 
 [PlasmaViews][Panel 2]
 floating=1

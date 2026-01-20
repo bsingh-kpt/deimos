@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -ouex pipefail
+set -xeuo pipefail
 
 ### Definitions ###
 YUBICO_AUTHENTICATOR_VERSION=7.3.0
@@ -60,7 +60,7 @@ dnf5 install -y \
 	docker-compose \
 	podman podman-docker podman-tui podman-machine \
 	git-delta \
-	neovim \
+	kcalc \
 	ckb-next polychromatic \
 	openrazer-meta openrazer-daemon \
 	brave-browser \
@@ -115,16 +115,16 @@ systemctl enable podman.socket
 systemctl disable ublue-update.timer
 systemctl mask ublue-update.service
 
-## Deploy KDE Layouts & Widgets
+# KDE UI configurations
 mkdir -p /etc/skel/.config
-cp /ctx/config/user/starship.toml /etc/skel/.config/starship.toml
-cp /ctx/config/user/plasmashellrc /etc/skel/.config/plasmashellrc
-cp /ctx/config/user/appletsrc /etc/skel/.config/plasma-org.kde.plasma.desktop-appletsrc
-cp /ctx/config/user/krunnerrc /etc/skel/.config/krunnerrc
-
+cp /ctx/assets/config/starship.toml /etc/skel/.config/starship.toml
+cp /ctx/assets/config/plasmashellrc /etc/skel/.config/plasmashellrc
+cp /ctx/assets/config/appletsrc /etc/skel/.config/plasma-org.kde.plasma.desktop-appletsrc
+cp /ctx/assets/config/krunnerrc /etc/skel/.config/krunnerrc
+cp /ctx/assets/config/kdeglobals /etc/skel/.config/kdeglobals
 # Terminal config
 mkdir -p /etc/skel/.config/dconf
-cp /ctx/config/user/dconf_user /etc/skel/.config/dconf/user
+cp /ctx/assets/config/dconf_user /etc/skel/.config/dconf/user
 
 # Deploy Widgets
 mkdir -p /usr/share/plasma/plasmoids
@@ -136,10 +136,10 @@ chmod +x /usr/bin/yubikey-sign-kernel
 
 # Copy 'just' script for custom commands
 mkdir -p /usr/share/ublue-os/just
-cp -f /ctx/scripts/bsingh-kpt.just /usr/share/ublue-os/just/60-bsingh-kpt.just
+cp -f /ctx/assets/system_files/usr/share/ublue-os/just/60-bsingh-kpt.just /usr/share/ublue-os/just/60-bsingh-kpt.just
 
 # Copy bsingh-kpt data files to /usr/share
-cp -r /ctx/system/share/bsingh-kpt /usr/share/
+cp -r /ctx/assets/system_files/usr/share/bsingh-kpt /usr/share/
 
 ## bashrc modifications
 # Fixes flatpak apps KDE icons in crystal-dock

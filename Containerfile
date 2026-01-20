@@ -2,6 +2,7 @@
 FROM scratch AS ctx
 COPY build_files /
 COPY assets /assets/
+COPY thirdparty /thirdparty/
 COPY cosign.pub /
 
 # Base Image

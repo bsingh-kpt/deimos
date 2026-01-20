@@ -1,0 +1,6 @@
+# NAME | VERSION | URL | TARGET_DIR | CANONICAL_NAME | STRIP | CHECKSUM (SHA256)
+# --------------------------------------------------------------------------------
+Window Title Applet | 0.9.0 | https://github.com/dhruv8sh/plasma6-window-title-applet/archive/refs/tags/v0.9.0.tar.gz | /usr/share/plasma/plasmoids | org.kde.windowtitle | 1 | 82a0ae9d10c47e36c510a45fb8f793891def81addfa32b0697b580a84d18a6c2
+Panel Colorizer | 6.4.0 | https://github.com/luisbocanegra/plasma-panel-colorizer/releases/download/v6.4.0/plasmoid-panel-colorizer-v6.4.0.plasmoid | /usr/share/plasma/plasmoids | luisbocanegra.panel.colorizer | 0 | bf7c411abd5b8055a07928444c8a445af3f0d225717fd16e162f20fa97e8c516
+zayron.chaac.weather | 3.0.6 | local://${THIRDPARTY_DIR}/zayron.chaac.weather.tar.xz | /usr/share/plasma/plasmoids | zayron.chaac.weather | 1 | a447a3a5c1f81365e179ac4725f9165a35095906053ec033463b1d9face6b400
+zayron.simple.separator | 1.4.4 | local://${THIRDPARTY_DIR}/zayron.simple.separator.tar.xz | /usr/share/plasma/plasmoids | zayron.simple.separator | 1 | fff754686ce2189bc6a5b54865a61bd3da8220f1d66f5d325e368e26cd5439a1

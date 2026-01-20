@@ -109,6 +109,20 @@ curl -sS https://starship.rs/install.sh | sh -s -- --bin-dir /usr/bin/ -y
 
 ### INSTALL PACKAGES SECTION - END ###
 
+### Install customizations
+bash /ctx/scripts/install-customizations.sh "/ctx"
+
+# Install Secure Boot Signing Hook
+cp /ctx/assets/scripts/yubikey-sign-kernel /usr/bin/yubikey-sign-kernel
+chmod +x /usr/bin/yubikey-sign-kernel
+
+# Install 'just' script for custom commands
+mkdir -p /usr/share/ublue-os/just
+cp -f /ctx/assets/system_files/usr/share/ublue-os/just/60-bsingh-kpt.just /usr/share/ublue-os/just/60-bsingh-kpt.just
+
+# Install share/bsingh-kpt data to /usr/share
+cp -r /ctx/assets/system_files/usr/share/bsingh-kpt /usr/share/
+
 ### SYSTEM CONFIGURATION SECTION - START ###
 ## System services
 systemctl enable podman.socket
@@ -125,21 +139,6 @@ cp /ctx/assets/config/kdeglobals /etc/skel/.config/kdeglobals
 # Terminal config
 mkdir -p /etc/skel/.config/dconf
 cp /ctx/assets/config/dconf_user /etc/skel/.config/dconf/user
-
-# Deploy Widgets
-mkdir -p /usr/share/plasma/plasmoids
-cp -r /ctx/system/share/plasma/plasmoids/* /usr/share/plasma/plasmoids/
-
-# Install Secure Boot Signing Hook
-cp /ctx/scripts/yubikey-sign-kernel /usr/bin/yubikey-sign-kernel
-chmod +x /usr/bin/yubikey-sign-kernel
-
-# Copy 'just' script for custom commands
-mkdir -p /usr/share/ublue-os/just
-cp -f /ctx/assets/system_files/usr/share/ublue-os/just/60-bsingh-kpt.just /usr/share/ublue-os/just/60-bsingh-kpt.just
-
-# Copy bsingh-kpt data files to /usr/share
-cp -r /ctx/assets/system_files/usr/share/bsingh-kpt /usr/share/
 
 ## bashrc modifications
 # Fixes flatpak apps KDE icons in crystal-dock
@@ -165,7 +164,7 @@ EOF
 
 ### POST INSTALL SECTION - START ###
 # Post install software setup
-cp -f /ctx/scripts/post-install-setup-flatpak.sh /usr/bin/post-install-setup
+cp -f /ctx/assets/scripts/post-install-setup-flatpak.sh /usr/bin/post-install-setup
 chmod +x /usr/bin/post-install-setup
 cat <<'EOF' >/etc/xdg/autostart/trigger-post-install.desktop
 [Desktop Entry]

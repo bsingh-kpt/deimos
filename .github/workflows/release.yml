@@ -91,17 +91,3 @@ jobs:
             *-CHECKSUM
             *${{ github.event.inputs.upload_to_s3 == 'true' && '' || '*.part-*' }}
 
-      - name: Cleanup
-        if: success()
-        run: |
-          # Find the artifact ID by name and delete it
-          ARTIFACT_ID=$(gh api repos/${{ github.repository }}/actions/artifacts?name=build-iso-stable --jq '.artifacts[0].id')
-
-          if [ ! -z "$ARTIFACT_ID" ] && [ "$ARTIFACT_ID" != "null" ]; then
-            echo "Deleting artifact ID: $ARTIFACT_ID"
-            gh api --method DELETE repos/${{ github.repository }}/actions/artifacts/$ARTIFACT_ID
-          else
-            echo "No artifact found with name 'build-iso-stable'. Skipping cleanup."
-          fi
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

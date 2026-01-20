@@ -1,0 +1,34 @@
+name: Cleanup Old GHCR Images
+
+on:
+  schedule:
+    # Runs every Sunday at 00:00 UTC
+    - cron: '0 0 * * 0'
+  workflow_dispatch: # Allows you to run this manually for testing
+
+jobs:
+  clean-ghcr:
+    runs-on: ubuntu-24.04
+    permissions:
+      packages: write
+
+    steps:
+      - name: Delete images older than 30 days and untagged
+        uses: snok/container-retention-policy@v3
+        with:
+          # Your GitHub token (automatically provided)
+          token: ${{ secrets.GITHUB_TOKEN }}
+          
+          # Target your specific image name
+          image-names: 'bazziteos'
+          
+          # Filter: Delete versions older than 30 days
+          cut-off: 30d
+          
+          # Specifically protects tags matching a pattern (e.g., semver like v1.0.0)
+          # This ensures your official releases are never auto-deleted
+          filter-tags: '^v\d+\.\d+\.\d+$'
+          filter-include-untagged: true
+          
+          # Set to 'false' to actually perform deletion; 'true' just logs what would happen
+          dry-run: false

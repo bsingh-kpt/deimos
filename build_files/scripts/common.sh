@@ -73,16 +73,22 @@ install_archive() {
 
 	case "$mime_type" in
 	"application/x-rpm")
-		log_info "Detected ZIP format"
-		dnf5 install -y "$archive_path"
+		log_info "Detected RPM format"
+        local final_archive_path="${archive_path%.archive}.rpm"
+        mv "$archive_path" "$final_archive_path"
+		dnf5 install -y "$final_archive_path"
 		;;
 
 	"application/zip")
 		log_info "Detected ZIP format"
+        local final_archive_path="${archive_path%.archive}.zip"
+        mv "$archive_path" "$final_archive_path"
 		local zip_tmp
 		zip_tmp=$(mktemp -d)
 
-		unzip -q "$archive_path" -d "$zip_tmp"
+		if ! unzip -o -q "$final_archive_path" -d "$zip_tmp"; then
+			return 1
+		fi
 
 		if [ "$strip" -eq 1 ]; then
 			# Move the contents of the first inner directory to the destination
@@ -91,21 +97,38 @@ install_archive() {
 		else
 			cp -r "$zip_tmp"/* "$dest/"
 		fi
+
 		rm -rf "$zip_tmp"
 		;;
 
-	"application/gzip" | "application/x-tar" | "application/x-xz")
-		log_info "Detected tar (tar/gz/xz) archive"
-		tar -xf "$archive_path" -C "$dest" --strip-components="$strip"
+	"application/x-tar")
+		log_info "Detected tar archive"
+        local final_archive_path="${archive_path%.archive}.tar"
+        mv "$archive_path" "$final_archive_path"
+		tar -xf "$final_archive_path" -C "$dest" --strip-components="$strip"
+		;;
+    
+    "application/gzip")
+		log_info "Detected tar (gzip) archive"
+        local final_archive_path="${archive_path%.archive}.tar.gz"
+        mv "$archive_path" "$final_archive_path"
+		tar -xzf "$final_archive_path" -C "$dest" --strip-components="$strip"
+		;;
+
+    "application/x-xz")
+		log_info "Detected tar (xz) archive"
+        local final_archive_path="${archive_path%.archive}.tar.xz"
+        mv "$archive_path" "$final_archive_path"
+		tar -xJf "$final_archive_path" -C "$dest" --strip-components="$strip"
 		;;
 
 	*)
-		log_error "Unknown archive format for $archive_path"
+		log_error "Unknown archive format for $archive_path : $mime_type"
 		return 1
 		;;
 	esac
 
-	log_ok "Installation complete for $(basename "$archive_path")"
+	return $?
 }
 
 # Cleanup: Automatically triggered
@@ -139,27 +162,29 @@ install_from_manifest() {
 		log_info "Processing: $name (v$version)"
 
 		# 2. Define internal paths
-        local save_path
-        local final_dest
-        if [[ -z "$canonical" ]]; then
-		    save_path="$TMP_WORK_DIR/${name// /_}-$version.archive"
-		    final_dest="${target}"
-        else
-            save_path="$TMP_WORK_DIR/$canonical-$version.archive"
-		    final_dest="${target}/${canonical}"
-        fi
+		local save_path
+		local final_dest
+		if [[ -z "$canonical" ]]; then
+			save_path="$TMP_WORK_DIR/${name// /_}-$version.archive"
+			final_dest="${target}"
+		else
+			save_path="$TMP_WORK_DIR/$canonical-$version.archive"
+			final_dest="${target}/${canonical}"
+		fi
 
 		# 3. Execution Flow: Download -> Verify -> Install -> Cleanup
 		if download_archive "$url" "$save_path" "$hash"; then
-
 			# Default strip to 0 if empty
 			local strip_level="${strip:-0}"
 
 			if install_archive "$save_path" "$final_dest" "$strip_level"; then
 				log_ok "Successfully installed $name"
+            else
+                log_error "Failed installation for $name"
+                continue
 			fi
 
-            # post-install
+			# post-install
 			local hook_name="post_install_${canonical//-/_}"
 			if declare -f "$hook_name" >/dev/null; then
 				log_info "Found post-install hook: $hook_name"

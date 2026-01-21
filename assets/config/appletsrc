@@ -248,9 +248,9 @@ DialogWidth=720
 temperatureUnit=6001
 
 [Containments][128][Applets][164][Configuration][WeatherStation]
-placeDisplayName=Ottawa (Kanata - Orléans), ON
-placeInfo=ON|s0000430
-provider=envcan
+placeDisplayName=Alberta, Canada, CA
+placeInfo=Alberta, Canada, CA|5883102
+provider=bbcukmet
 
 [Containments][128][Applets][167]
 immutability=1
@@ -580,9 +580,9 @@ DialogWidth=720
 temperatureUnit=6001
 
 [Containments][178][Applets][204][Configuration][WeatherStation]
-placeDisplayName=Ottawa (Kanata - Orléans), ON
-placeInfo=ON|s0000430
-provider=envcan
+placeDisplayName=Alberta, Canada, CA
+placeInfo=Alberta, Canada, CA|5883102
+provider=bbcukmet
 
 [Containments][178][Applets][205]
 immutability=1

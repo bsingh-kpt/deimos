@@ -3,9 +3,6 @@
 set -xeuo pipefail
 
 ### Definitions ###
-YUBICO_AUTHENTICATOR_VERSION=7.3.0
-TABBY_VERSION=1.0.229
-PROTONMAL_VERSION=1.12.0
 
 ### Image metadata and verification
 cp /ctx/cosign.pub /etc/pki/containers/bsingh-kpt.pub
@@ -92,7 +89,6 @@ cp -r /ctx/assets/system_files/usr/share/bsingh-kpt /usr/share/
 ### SYSTEM CONFIGURATION SECTION - START ###
 ## System services
 systemctl enable podman.socket
-systemctl disable ublue-update.timer
 systemctl mask ublue-update.service
 
 # KDE UI configurations

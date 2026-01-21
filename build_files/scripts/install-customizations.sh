@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -xeuo pipefail
+set -euo pipefail
 
 [[ -z "$1" ]] && {
 	echo "Error: missing base dir" >&2
@@ -31,7 +31,6 @@ for def_file in "$BASE_DIR/definitions"/*.txt; do
 	source "$BASE_DIR/scripts/install-${type}.sh"
 
 	if declare -f "$handler_func" >/dev/null; then
-		log_info "--- Starting $handler_func ---"
 		"$handler_func" "$def_file"
 	else
 		log_warn "$handler_func not defined. Skipping $def_file"

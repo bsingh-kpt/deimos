@@ -53,6 +53,7 @@ curl -fsSLo /etc/yum.repos.d/brave-browser.repo https://brave-browser-rpm-releas
 
 # Standard -dx tools minus the handheld overhead
 dnf5 install -y \
+	systemd-ukify \
 	libcgroup \
 	docker-compose \
 	podman podman-docker podman-tui podman-machine \

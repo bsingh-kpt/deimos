@@ -5,24 +5,25 @@ if [ -f ~/.config/.post-install-done ]; then
 	exit 0
 fi
 
-# Define apps (ID | Display Name | WMClass)
-# Most Flatpaks use the last part of their ID as the WMClass, but some (Brave/Firefox) are unique.
+# Define apps (Display Name | ID)
 APPS=(
-	"app.polychromatic.controller" "Polychromatic" "polychromatic"
-	"org.mozilla.firefox" "Firefox" "firefox"
-	"org.libreoffice.LibreOffice" "LibreOffice" "libreoffice-startcenter"
-	"dev.vencord.Vesktop" "Vesktop (Discord)" "vesktop"
+	"Flatseal" "com.github.tchx84.Flatseal"
+	"Firefox" "org.mozilla.firefox"
+	"Image Viewer" "org.gnome.Loupe"
+	"LibreOffice" "org.libreoffice.LibreOffice"
+	"Vesktop (Discord)" "dev.vencord.Vesktop"
+	"Podman Desktop" "io.podman_desktop.PodmanDesktop"
+	"Calibre" "com.calibre_ebook.calibre"
 )
 
-total_apps=$((${#APPS[@]} / 3))
+total_apps=$((${#APPS[@]} / 2))
 current=0
 mkdir -p ~/.local/share/applications
 
 (
-	for ((i = 0; i < ${#APPS[@]}; i += 3)); do
-		id="${APPS[$i]}"
-		name="${APPS[$i + 1]}"
-		wmclass="${APPS[$i + 2]}"
+	for ((i = 0; i < ${#APPS[@]}; i += 2)); do
+		name="${APPS[$i]}"
+		id="${APPS[$i + 1]}"
 
 		current=$((current + 1))
 		percent=$((current * 100 / total_apps))
@@ -34,16 +35,9 @@ mkdir -p ~/.local/share/applications
 		# flatpak install -y flathub "$id" >/dev/null 2>&1
 		flatpak install -y flathub "$id"
 
-		# Copy official desktop file to local override
-		# This prevents duplicates and fixes the "broken icon" in Crystal Dock
-		SYS_FILE="/var/lib/flatpak/exports/share/applications/$id.desktop"
-		LOCAL_FILE="$HOME/.local/share/applications/$id.desktop"
-
-		if [ -f "$SYS_FILE" ]; then
-			cp "$SYS_FILE" "$LOCAL_FILE"
-			# Append the link that tells the Dock "This window belongs to this icon"
-			echo "StartupWMClass=$wmclass" >>"$LOCAL_FILE"
-		fi
+		# Copy official desktop file to local override for any post install modification
+		# SYS_FILE="/var/lib/flatpak/exports/share/applications/$id.desktop"
+		# LOCAL_FILE="$HOME/.local/share/applications/$id.desktop"
 	done
 ) | zenity --progress --title="System Setup" --text="Starting installation..." --percentage=0 --auto-close --width=400
 

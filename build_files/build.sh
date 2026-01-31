@@ -20,13 +20,16 @@ IMAGEINFO_COMMIT_ID=${IMAGE_COMMIT_ID:-unknown}
 case "${GITHUB_REF_NAME}" in
 "main")
 	IMAGEINFO_IMAGE_TAG="latest"
+	IMAGEINFO_IMAGE_BRANCH="main"
 	;;
 "stable")
 	IMAGEINFO_IMAGE_TAG="stable"
+	IMAGEINFO_IMAGE_BRANCH="stable"
 	;;
 *)
 	# Fallback for feature branches or empty variables
 	IMAGEINFO_IMAGE_TAG="${GITHUB_REF_NAME:-dirty}"
+	IMAGEINFO_IMAGE_BRANCH="${GITHUB_REF_NAME}"
 	;;
 esac
 cat <<EOF >/usr/share/ublue-os/image-info.json
@@ -35,7 +38,7 @@ cat <<EOF >/usr/share/ublue-os/image-info.json
   "image-vendor": "bsingh-kpt",
   "image-ref": "ostree-image-signed:docker://ghcr.io/bsingh-kpt/bazziteos",
   "image-tag": "$IMAGEINFO_IMAGE_TAG",
-  "image-branch": "main",
+  "image-branch": "$IMAGEINFO_IMAGE_BRANCH",
   "image-commit-id": "$IMAGEINFO_COMMIT_ID",
   "base-image-name": "bazzite-nvidia-open",
   "fedora-version": "$IMAGEINFO_FEDORA_VERSION",
@@ -82,7 +85,7 @@ chmod +x /usr/bin/yubikey-sign-kernel
 
 # Install 'just' script for custom commands
 mkdir -p /usr/share/ublue-os/just
-cp -f /ctx/assets/system_files/usr/share/ublue-os/just/60-bsingh-kpt.just /usr/share/ublue-os/just/60-bsingh-kpt.just
+cp -f /ctx/assets/system_files/usr/share/ublue-os/just/60-custom.just /usr/share/ublue-os/just/60-custom.just
 
 # Install share/bsingh-kpt data to /usr/share
 cp -r /ctx/assets/system_files/usr/share/bsingh-kpt /usr/share/

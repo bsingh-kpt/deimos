@@ -2,7 +2,7 @@
 auth       required                   pam_env.so
 auth       requisite                  pam_unix.so nullok try_first_pass
 auth       [success=1 default=ignore] pam_succeed_if.so user ingroup nomfa
-auth       required                   pam_u2f.so cue origin=pam://bsingh-kpt appid=pam://bsingh-kpt
+auth       required                   pam_u2f.so cue origin=pam://bsingh-kpt appid=pam://bsingh-kpt authfile=/etc/Yubico/u2f_keys
 
 account    include      system-auth
 password   include      system-auth

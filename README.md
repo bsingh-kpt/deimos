@@ -1,67 +1,77 @@
-# 🌑 Deimos
+# 🌑 Deimos OS
 
-**Secure. Private. Authenticated.** *A hardened desktop gaming image based on [Bazzite](https://bazzite.gg).*
+**Verified. Private. Authenticated.** *A Bazzite-based gaming OS featuring a hardware-verified boot chain.*
 
 ---
 
 ## 🌌 The Vision
-**Deimos** is a custom OS image built directly on the **Bazzite** OCI foundation. While Bazzite provides the ultimate gaming experience—including curated drivers and specialized kernels—Deimos extends this by adding a rigorous **Security and Privacy** layer.
+**Deimos OS** is named after the outer moon of Mars—a celestial sentinel guarding its planet. While typical security-focused distributions often sacrifice usability to minimize attack surface, Deimos OS takes a different path. 
 
-Named after the smaller, outer moon of Mars, Deimos acts as an impenetrable sentinel guarding your system integrity.
-
----
-
-## 🛡️ The "Aegis" Security Layer
-The defining feature of Deimos is the move toward hardware-backed trust. We have integrated specialized tooling to bridge the gap between high-performance gaming and enterprise-grade boot security.
-
-* **Hardware-Backed UKI Signing:** Deimos includes custom logic to sign Unified Kernel Images (UKI) using a **Yubikey** (via `sbctl` and `go-piv`).
-* **Physical Presence Verification:** System updates that modify the bootloader require a physical touch on your Yubikey. No remote actor can modify your boot chain without your physical consent.
-* **Secure Boot Integration:** Designed for users who enroll their own keys (PK/KEK/db). Deimos automates the signing of the kernel and bootloader during the `rpm-ostree` update cycle.
-* **Privacy Hardening:** In addition to Bazzite's base, Deimos implements stricter Flatpak permissions and zero-telemetry configurations.
+Our goal is to provide a high-performance gaming environment where **System Integrity** is paramount. We don't just "shield" the OS; we provide the cryptographic infrastructure to prove that your kernel, drivers, and bootloader are authentic and untampered.
 
 ---
 
-## 🎮 Gaming Performance
-Deimos inherits the performance DNA of **Bazzite**. By basing our image on theirs, we provide:
-* **Proprietary Drivers:** Pre-installed and configured NVIDIA/Mesa drivers.
-* **Performance Kernels:** Patched for high-frequency gaming and low process latency.
-* **Bazzite Tooling:** Inherits the vast hardware compatibility and gaming stack provided by the upstream Bazzite image.
+## 🛡️ The Deimos Integrity Suite
+This suite moves the "Chain of Trust" from software-only checks to physical hardware verification.
 
-> **Note:** Deimos is optimized for Desktop and Laptop users. Unlike base Bazzite, it does not default to the Steam Deck Game Mode UI.
+
+
+* **Hardware-Backed UKI Signing:** Custom logic to sign Unified Kernel Images (UKI) using an **Ed25519** key pair and a physical **Yubikey**.
+* **Mandatory Physical Presence:** System updates that modify the bootloader require a physical touch on your Yubikey. This prevents remote actors from performing "silent" updates to your boot chain.
+* **Authenticated Boot:** Built for users who enroll their own Secure Boot keys (PK/KEK/db). Deimos OS automates the signing process during the `rpm-ostree` update cycle to maintain a continuous chain of trust.
+* **Integrity Enforcement:** Enhanced Flatpak permission overrides and zero-telemetry defaults ensure your system remains under your exclusive control.
+
+---
+
+## 🎮 High-Performance Gaming
+Deimos OS maintains the full gaming DNA of **Bazzite** while upgrading the underlying security model:
+
+* **Open-Source NVIDIA Drivers:** Leverages NVIDIA's **fully open-source kernel modules**, allowing for seamless cryptographic signing and better integration with immutable system updates.
+* **Performance Kernels:** Pre-patched for high-frequency gaming and low-latency process scheduling.
+* **The Bazzite Stack:** Includes the full suite of gaming tools (Steam, Lutris, Wayland optimizations) without the handheld-specific UI defaults.
+
 
 ---
 
 ## 🚀 Installation
 
-### 1. Rebase to Deimos
-If you are already on a uBlue or Bazzite-based system, you can rebase directly:
+### 1. Establish the Chain of Trust
+To ensure the integrity of the image before installation, you must first trust the Deimos OS public key. Run the following command to download and trust the signature:
 
 ```bash
-rpm-ostree rebase ostree-unverified-registry:ghcr.io/YOUR_GITHUB_USERNAME/deimos:latest
+# Replace bsingh-kpt with your actual username
+curl -Lo /etc/pki/containers/deimos.pub [https://raw.githubusercontent.com/bsingh-kpt/deimos/main/cosign.pub](https://raw.githubusercontent.com/bsingh-kpt/deimos/main/cosign.pub)
 ```
 
-### 2. Physical Signing Setup
-Deimos expects a Yubikey for its automated signing services. To initialize the hardware bridge:
+### 2. Rebase to Deimos OS (Verified)
+With the key in place, perform a verified rebase. This ensures that `rpm-ostree` will only pull the image if the signature matches your public key:
+
+```bash
+rpm-ostree rebase ostree-image-signed:docker://ghcr.io/bsingh-kpt/deimos:latest
+```
+
+### 2. Initializing the Integrity Suite
+To enroll your hardware keys and establish your local chain of trust:
 
 1.  Ensure your UEFI is in **Setup Mode**.
 2.  Run the Deimos setup utility:
     ```bash
-    /usr/bin/deimos-init-aegis
+    /usr/bin/deimos-init-integrity
     ```
-3.  Enter your PIN and **Touch your Yubikey** when prompted.
+3.  Enter your PIN and **Touch your Yubikey** when the LED flashes.
 
 ---
 
 ## 🛠️ Technical Implementation
-Deimos utilizes a unique background service architecture to handle Secure Boot:
+Deimos OS utilizes a specialized background architecture to handle Secure Boot automation:
 
-1.  **Detection:** A `systemd.path` unit monitors for kernel updates.
-2.  **Verification:** The service ensures the Yubikey is inserted before proceeding.
-3.  **Secure Bridge:** It uses `systemd-ask-password` to prompt for your PIN via a secure desktop popup, then pipes it directly to the signing tool to avoid environment leaks.
+1.  **Detection:** A `systemd.path` unit monitors for new kernel deployments.
+2.  **Hardware Verification:** The service verifies the Yubikey is physically connected before initiating the signing process.
+3.  **Secure Bridge:** Uses `systemd-ask-password` for secure PIN entry, preventing sensitive credentials from appearing in the system process tree.
 
 ---
 
-## 🤝 Credits
+## 🤝 Credits & Identity
 * **Foundation:** [Bazzite](https://github.com/ublue-os/bazzite) (uBlue-OS).
 * **Security Tools:** [sbctl](https://github.com/Foxboron/sbctl).
-* **Identity:** Deimos is an independent project and is not affiliated with the official Bazzite or Fedora teams.
+* **Identity:** Deimos OS is an independent project and is not affiliated with Valve, NVIDIA, Fedora, or the official uBlue team.

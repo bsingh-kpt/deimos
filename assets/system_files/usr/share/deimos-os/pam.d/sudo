@@ -10,7 +10,7 @@ auth       requisite    pam_unix.so nullok try_first_pass
 # 3. The Yubikey Check
 # Ensure this matches the AppID/Origin you used in pamu2fcfg
 auth       [success=1 default=ignore]   pam_succeed_if.so user ingroup nomfa
-auth       required                     pam_u2f.so cue origin=pam://bsingh-kpt appid=pam://bsingh-kpt authfile=/etc/Yubico/u2f_keys
+auth       required                     pam_u2f.so cue origin=pam://deimos-os appid=pam://deimos-os authfile=/etc/Yubico/u2f_keys
 account    include                      system-auth
 password   include                      system-auth
 session    optional                     pam_keyinit.so revoke

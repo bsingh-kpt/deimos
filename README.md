@@ -16,7 +16,7 @@ This suite moves the "Chain of Trust" from software-only checks to physical hard
 
 
 
-* **Hardware-Backed UKI Signing:** Custom logic to sign Unified Kernel Images (UKI) using an **Ed25519** key pair and a physical **Yubikey**.
+* **Hardware-Backed UKI Signing:** Custom logic to sign Unified Kernel Images (UKI) using an **RSA** key pair and a physical **Yubikey**.
 * **Mandatory Physical Presence:** System updates that modify the bootloader require a physical touch on your Yubikey. This prevents remote actors from performing "silent" updates to your boot chain.
 * **Authenticated Boot:** Built for users who enroll their own Secure Boot keys (PK/KEK/db). Deimos OS automates the signing process during the `rpm-ostree` update cycle to maintain a continuous chain of trust.
 * **Integrity Enforcement:** Enhanced Flatpak permission overrides and zero-telemetry defaults ensure your system remains under your exclusive control.
@@ -24,9 +24,9 @@ This suite moves the "Chain of Trust" from software-only checks to physical hard
 ---
 
 ## 🎮 High-Performance Gaming
-Deimos OS maintains the full gaming DNA of **Bazzite** while upgrading the underlying security model:
+Deimos OS maintains the full gaming DNA of **Bazzite** while enhancing the underlying security model:
 
-* **Open-Source NVIDIA Drivers:** Leverages NVIDIA's **fully open-source kernel modules**, allowing for seamless cryptographic signing and better integration with immutable system updates.
+* **Open-Source NVIDIA Drivers:** Leverages NVIDIA's **open-source kernel modules**, allowing for seamless cryptographic signing and better integration with immutable system updates.
 * **Performance Kernels:** Pre-patched for high-frequency gaming and low-latency process scheduling.
 * **The Bazzite Stack:** Includes the full suite of gaming tools (Steam, Lutris, Wayland optimizations) without the handheld-specific UI defaults.
 
@@ -39,8 +39,7 @@ Deimos OS maintains the full gaming DNA of **Bazzite** while upgrading the under
 To ensure the integrity of the image before installation, you must first trust the Deimos OS public key. Run the following command to download and trust the signature:
 
 ```bash
-# Replace bsingh-kpt with your actual username
-curl -Lo /etc/pki/containers/deimos.pub [https://raw.githubusercontent.com/bsingh-kpt/deimos/main/cosign.pub](https://raw.githubusercontent.com/bsingh-kpt/deimos/main/cosign.pub)
+curl -Lo /etc/pki/containers/deimos.pub https://raw.githubusercontent.com/bsingh-kpt/deimos/main/cosign.pub
 ```
 
 ### 2. Rebase to Deimos OS (Verified)
@@ -50,7 +49,7 @@ With the key in place, perform a verified rebase. This ensures that `rpm-ostree`
 rpm-ostree rebase ostree-image-signed:docker://ghcr.io/bsingh-kpt/deimos:latest
 ```
 
-### 2. Initializing the Integrity Suite
+### 3. Initializing the Integrity Suite
 To enroll your hardware keys and establish your local chain of trust:
 
 1.  Ensure your UEFI is in **Setup Mode**.

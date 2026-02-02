@@ -5,12 +5,12 @@ set -xeuo pipefail
 ### Definitions ###
 
 ### Image metadata and verification
-cp /ctx/cosign.pub /etc/pki/containers/bsingh-kpt.pub
-cat <<'EOF' >/etc/containers/registries.d/bsingh-kpt.yaml
+cp /ctx/cosign.pub /etc/pki/containers/deimos-os.pub
+cat <<'EOF' >/etc/containers/registries.d/deimos-os.yaml
 docker:
   ghcr.io/bsingh-kpt:
     sigstoreSigned:
-      keyPath: /etc/pki/containers/bsingh-kpt.pub
+      keyPath: /etc/pki/containers/deimos-os.pub
 EOF
 
 IMAGEINFO_FEDORA_VERSION=$(grep '"fedora-version":' /usr/share/ublue-os/image-info.json | cut -d '"' -f 4)
@@ -87,8 +87,8 @@ chmod +x /usr/bin/yubikey-sign-kernel
 mkdir -p /usr/share/ublue-os/just
 cp -f /ctx/assets/system_files/usr/share/ublue-os/just/60-custom.just /usr/share/ublue-os/just/60-custom.just
 
-# Install share/bsingh-kpt data to /usr/share
-cp -r /ctx/assets/system_files/usr/share/bsingh-kpt /usr/share/
+# Install share/deimos-os data to /usr/share
+cp -r /ctx/assets/system_files/usr/share/deimos-os /usr/share/
 
 ### SYSTEM CONFIGURATION SECTION - START ###
 ## System services

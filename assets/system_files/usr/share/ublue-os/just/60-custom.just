@@ -1,6 +1,6 @@
 # vim: set ft=make :
 
-bsingh-kpt-help:
+deimos-os-help:
     #!/usr/bin/bash
     echo "Available commands:"
     echo " - sysupdate-yubisign"
@@ -18,7 +18,7 @@ sysupdate-yubisign:
 
 
 # Setup Yubikey FIDO MFA auth for sudo
-[group('bsingh-customizations')]
+[group('deimos-os-customizations')]
 unmfa-sudo:
     #!/usr/bin/bash
     set -euo pipefail
@@ -35,7 +35,7 @@ unmfa-sudo:
     echo "unmfa-sudo success. sudo pam auth has been restored to system default."
 
 # Setup Yubikey FIDO MFA auth for sudo
-[group('bsingh-customizations')]
+[group('deimos-os-customizations')]
 setup-fido2-mfa ACTION="":
     #!/usr/bin/bash
     set -eo pipefail
@@ -136,7 +136,7 @@ setup-fido2-mfa ACTION="":
         echo -e "${BOLD}Waiting for YubiKey...${NC}"
         echo -e "${YELLOW}${BLINK}→ Please tap the flashing button on your YubiKey now.${NC}"
 
-        if pamu2fcfg -o pam://bsingh-kpt -i pam://bsingh-kpt > /tmp/u2f_keys_user; then
+        if pamu2fcfg -o pam://deimos-os -i pam://deimos-os > /tmp/u2f_keys_user; then
             # SUCCESS: Move up and overwrite the blinking prompt with a clean success message
             echo -e "${PREVIOUS_LINE}${CLEAR_LINE}${SUCCESS}Key touch detected! Registration complete."
         else
@@ -182,7 +182,7 @@ setup-fido2-mfa ACTION="":
         echo -e "${BOLD}Waiting for YubiKey...${NC}"
         echo -e "${YELLOW}${BLINK}→ Please tap the flashing button on your YubiKey now.${NC}"
 
-        if pamu2fcfg -o pam://bsingh-kpt -i pam://bsingh-kpt -n >> /tmp/u2f_keys_user; then
+        if pamu2fcfg -o pam://deimos-os -i pam://deimos-os -n >> /tmp/u2f_keys_user; then
             # SUCCESS: Move up and overwrite the blinking prompt with a clean success message
             echo -e "${PREVIOUS_LINE}${CLEAR_LINE}${SUCCESS}Key touch detected! Registration complete."
         else
@@ -205,7 +205,7 @@ setup-fido2-mfa ACTION="":
     elif [[ "${OPTION,,}" =~ (^enable[[:space:]]sudo|enable-mfa-sudo) ]]; then
         warn_user "sudo"
         echo "Enabling MFA for sudo..."
-        sudo cp -f /usr/share/bsingh-kpt/pam.d/sudo /etc/pam.d/sudo
+        sudo cp -f /usr/share/deimos-os/pam.d/sudo /etc/pam.d/sudo
         sudo chown root:root /etc/pam.d/sudo
         sudo chmod 644 /etc/pam.d/sudo
         sudo restorecon /etc/pam.d/sudo
@@ -220,7 +220,7 @@ setup-fido2-mfa ACTION="":
     elif [[ "${OPTION,,}" =~ (^enable[[:space:]]polkit|enable-mfa-polkit) ]]; then
         warn_user "polkit-1"
         echo "Enabling MFA for polkit..."
-        sudo cp -f /usr/share/bsingh-kpt/pam.d/polkit-1 /etc/pam.d/polkit-1
+        sudo cp -f /usr/share/deimos-os/pam.d/polkit-1 /etc/pam.d/polkit-1
         sudo chown root:root /etc/pam.d/polkit-1
         sudo chmod 644 /etc/pam.d/polkit-1
         sudo restorecon /etc/pam.d/polkit-1

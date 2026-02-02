@@ -18,7 +18,7 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           account: user
-          image-names: 'bazziteos'
+          image-names: 'deimos'
           
           # Delete versions older than 20 days
           cut-off: 20d

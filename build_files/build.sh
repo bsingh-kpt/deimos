@@ -34,9 +34,9 @@ case "${GITHUB_REF_NAME}" in
 esac
 cat <<EOF >/usr/share/ublue-os/image-info.json
 {
-  "image-name": "bazziteos",
+  "image-name": "deimos",
   "image-vendor": "bsingh-kpt",
-  "image-ref": "ostree-image-signed:docker://ghcr.io/bsingh-kpt/bazziteos",
+  "image-ref": "ostree-image-signed:docker://ghcr.io/bsingh-kpt/deimos",
   "image-tag": "$IMAGEINFO_IMAGE_TAG",
   "image-branch": "$IMAGEINFO_IMAGE_BRANCH",
   "image-commit-id": "$IMAGEINFO_COMMIT_ID",

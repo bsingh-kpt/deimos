@@ -1,0 +1,16 @@
+[Unit]
+Description=Build and Sign Bazzite UKI with Yubikey
+Requires=pcscd.socket
+After=network.target pcscd.socket
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/yubikey-uki-sign
+StandardInput=/dev/null
+StandardOutput=journal
+StandardError=journal
+TimeoutStartSec=120
+KillMode=process
+
+[Install]
+WantedBy=multi-user.target

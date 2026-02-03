@@ -80,8 +80,8 @@ dnf5 install -y \
 bash /ctx/scripts/install-customizations.sh "/ctx"
 
 # Install Secure Boot Signing Hook
-cp /ctx/assets/scripts/yubikey-sign-kernel /usr/bin/yubikey-sign-kernel
-chmod +x /usr/bin/yubikey-sign-kernel
+cp /ctx/assets/scripts/yubikey-uki-sign /usr/bin/yubikey-uki-sign
+chmod +x /usr/bin/yubikey-uki-sign
 
 # Install 'just' script for custom commands
 mkdir -p /usr/share/ublue-os/just
@@ -90,10 +90,15 @@ cp -f /ctx/assets/system_files/usr/share/ublue-os/just/60-custom.just /usr/share
 # Install share/deimos-os data to /usr/share
 cp -r /ctx/assets/system_files/usr/share/deimos-os /usr/share/
 
+# Install systemd services
+cp -f /ctx/assets/system_files/systemd-services/yubikey-uki-sign.service /etc/systemd/system/yubikey-uki-sign.service
+cp -f /ctx/assets/system_files/systemd-services/yubikey-uki-sign.path /etc/systemd/system/yubikey-uki-sign.path
+
 ### SYSTEM CONFIGURATION SECTION - START ###
 ## System services
 systemctl enable podman.socket
 systemctl mask ublue-update.service
+systemctl enable yubikey-uki-sign.path
 
 # KDE UI configurations
 mkdir -p /etc/skel/.config

@@ -1,0 +1,8 @@
+[Unit]
+Description=Watch for Ostree staged deployement dir to trigger UKI build snd sign
+
+[Path]
+PathChanged=/etc/ostree/deployments.d
+
+[Install]
+WantedBy=multi-user.target

@@ -146,3 +146,11 @@ Terminal=false
 X-KDE-autostart-after=panel
 EOF
 ### POST INSTALL SECTION - END ###
+
+### UKI BUILD ###
+
+cat <<EOF >>/etc/kernel/install.conf
+layout=uki
+EOF
+
+### UKI BUILD ###

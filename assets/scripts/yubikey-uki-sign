@@ -1,13 +1,14 @@
 #!/bin/bash
 set -euo pipefail
 
-sleep 5
+# sleep 5
 
 # --- Theme Configuration ---
 CYAN='\033[1;36m'
 GREEN='\033[1;32m'
 RED='\033[1;31m'
 BLUE='\033[1;34m'
+YELLOW='\033[1;33m'
 NC='\033[0m'
 BOLD='\033[1m'
 
@@ -15,6 +16,7 @@ WORKING="${CYAN}»${NC}"
 SUCCESS="${GREEN}✓${NC}"
 ERROR="${RED}✗${NC}"
 INFO="${BLUE}i${NC}"
+WARN="${YELLOW}!${NC}"
 
 # --- Global definitions ---
 TMP_DIR=$(mktemp -d -t build-uki-XXXXXXXXXX)
@@ -26,6 +28,7 @@ cleanup() {
 		echo -e "${WORKING} Cleaning up temporary files..."
 		rm -rf "$TMP_DIR"
 	fi
+	echo -e "${INFO}---Script complete---"
 	exit $exit_code
 }
 
@@ -47,20 +50,23 @@ DEST_DIR="${ESP_PATH}/EFI/Linux"
 STUB="/usr/lib/systemd/boot/efi/linuxx64.efi.stub"
 BOOTLOADER_SRC="/usr/lib/systemd/boot/efi/systemd-bootx64.efi"
 BOOTLOADER_DEST="${ESP_PATH}/EFI/BOOT/BOOTX64.EFI"
+SYSTEMD_BOOTLOADER_DEST="${ESP_PATH}/EFI/systemd/systemd-bootx64.efi"
 
-# --- 1. Handle systemd-boot (The Bootloader) ---
-echo -e "${WORKING} Checking bootloader integrity..."
-
+# Yubikey PIN
 PIN=""
-NEEDS_BOOTLOADER_SIGN=false
-if [[ ! -f "$BOOTLOADER_DEST" ]]; then
-	NEEDS_BOOTLOADER_SIGN=true
-elif ! sbverify --cert "$CERT" "$BOOTLOADER_DEST" &>/dev/null; then
-	echo -e "${INFO} Installed bootloader is unsigned or signature invalid."
-	NEEDS_BOOTLOADER_SIGN=true
-fi
 
-if [ "$NEEDS_BOOTLOADER_SIGN" = true ]; then
+# Defaults
+COMMIT_HASH=""
+KERNEL_VERSION=""
+BOOT_HASH=""
+UKI_IMAGE=""
+OUTPUT_DIR=""
+
+# Get kernel cmdline
+CMDLINE="$(cat /proc/cmdline | sed -e 's/BOOT_IMAGE=[^ ]* //g' | sed -e 's/ostree=[^ ]* //g')"
+
+# --- Sign systemd bootloader ---
+sign_bootloader() {
 	echo -e "${WORKING} Preparing to sign and install systemd-boot..."
 	cp "$BOOTLOADER_SRC" "${TMP_DIR}/bootx64.efi"
 
@@ -71,83 +77,201 @@ if [ "$NEEDS_BOOTLOADER_SIGN" = true ]; then
 
 	if [ -z "$PIN" ]; then
 		echo -e "${ERROR} No PIN entered or request timed out."
-		exit 1
+		return 1
 	fi
 
 	if env LD_PRELOAD=/usr/lib64/libpcsclite_real.so.1 SBCTL_YUBIKEY_PIN="$PIN" /usr/bin/sbctl sign -s "${TMP_DIR}/bootx64.efi"; then
 		echo -e "${SUCCESS} Bootloader signed."
-		# Use update first, fall back to install
-		bootctl update --boot-loader-src="${TMP_DIR}/bootx64.efi" || bootctl install --boot-loader-src="${TMP_DIR}/bootx64.efi"
+		# Use update first, fall back to install. TODO: correct these install commands. --boot-loader-src is not a valid flag
+		# bootctl update --boot-loader-src="${TMP_DIR}/bootx64.efi" || bootctl install --boot-loader-src="${TMP_DIR}/bootx64.efi"
+		cp -f "${TMP_DIR}/bootx64.efi" "$BOOTLOADER_DEST"
+		cp -f "${TMP_DIR}/bootx64.efi" "$SYSTEMD_BOOTLOADER_DEST"
 	else
 		echo -e "${ERROR} Failed to sign bootloader."
-		exit 1
+		return 1
 	fi
+}
+
+find_boot_hash() {
+	local commit_hash="$1"
+
+	local bhash=""
+
+	# shellcheck disable=SC2010
+	ostree_boot_path="$(ls -l /ostree/boot.1.1/default/*/* | grep "$commit_hash" | awk '{print $9}')"
+	bhash="$(echo "$ostree_boot_path" | cut -d'/' -f5)"
+	if [[ -z "$ostree_boot_path" || -z "$bhash" ]]; then
+		echo -e "${ERROR} Unable to find boot path or hash for deployment: ${commit_hash}"
+		return 1
+	fi
+	BOOT_HASH="$bhash"
+}
+
+# --- Build UKI ---
+build_uki() {
+	local commit_hash="$1"
+
+	local ostree_boot_path=""
+	local cmdline=""
+	local kernel=""
+	local initrd=""
+
+	echo -e "${WORKING} Building UKI for kver=${BOLD}${KERNEL_VERSION}${NC} boot_hash=${BOLD}${BOOT_HASH}${NC}..."
+
+	# shellcheck disable=SC2010
+	ostree_boot_path="$(ls -l /ostree/boot.1.1/default/*/* | grep "$commit_hash" | awk '{print $9}')"
+	cmdline="ostree=$ostree_boot_path $CMDLINE"
+	kernel="${ostree_boot_path}/usr/lib/modules/${KERNEL_VERSION}/vmlinuz"
+	initrd="${ostree_boot_path}/usr/lib/modules/${KERNEL_VERSION}/initramfs.img"
+
+	ukify build \
+		--linux "$kernel" \
+		--initrd "$initrd" \
+		--cmdline "$cmdline" \
+		--os-release @"/etc/os-release" \
+		--stub "$STUB" \
+		--output "${OUTPUT_DIR}/$UKI_IMAGE"
+
+	echo -e "${SUCCESS} UKI build success."
+}
+
+# --- Sign UKI with Yubikey ---
+sign_uki() {
+	echo -e "${WORKING} Signing UKI with sbctl..."
+	notify_user "Action Required: Touch Yubikey to sign the UKI image."
+
+	systemctl restart pcscd && sleep 1
+
+	if [ -z "$PIN" ]; then
+		PIN=$(systemd-ask-password "Enter Yubikey PIN for UKI signing:" --icon=security-high --timeout=300)
+		if [ -z "$PIN" ]; then
+			echo -e "${ERROR} No PIN entered or request timed out."
+			return 1
+		fi
+	fi
+
+	if env LD_PRELOAD=/usr/lib64/libpcsclite_real.so.1 SBCTL_YUBIKEY_PIN="$PIN" /usr/bin/sbctl sign -s "${OUTPUT_DIR}/${UKI_IMAGE}"; then
+		echo -e "${SUCCESS} UKI signed successfully."
+	else
+		echo -e "${ERROR} UKI signing failed."
+		return 1
+	fi
+	sbverify --cert "$CERT" "${OUTPUT_DIR}/${UKI_IMAGE}"
+}
+
+# --- Deploy ---
+deploy_uki() {
+	echo -e "${WORKING} Deploying to ESP..."
+	mkdir -p "$DEST_DIR"
+	cp "${OUTPUT_DIR}/${UKI_IMAGE}" "$DEST_DIR/$UKI_IMAGE"
+}
+
+# --- Cleanup Old Files ---
+cleanup_old_uki() {
+	local old_files=""
+
+	echo -e "${WORKING} Cleaning up old UKIs..."
+	CURRENT_V=$(uname -r)
+	# shellcheck disable=SC2010
+	old_files=$(ls "${DEST_DIR}"/bazzite-*.efi 2>/dev/null | grep -v "$KERNEL_VERSION" | grep -v "$CURRENT_V" | sort -V | head -n -2 || true)
+
+	if [[ -n "$old_files" ]]; then
+		echo "$old_files" | while read -r file; do
+			echo -e "  ${RED}✖ Removing:${NC} $(basename "$file")"
+			rm -f "$file"
+		done
+		echo -e "${SUCCESS} Cleanup complete."
+	fi
+}
+
+is_command() {
+    case "$1" in
+        build|sign|deploy) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+
+echo -e "${INFO}---Script start---"
+
+declare -a COMMANDS=()
+
+# Parse args
+while [[ $# -gt 0 ]]; do
+	case "$1" in
+	-c|--commit)
+		COMMIT_HASH="$2"
+		shift 2
+		;;
+	-k|--kver)
+		KERNEL_VERSION="$2"
+		shift 2
+		;;
+	-o|--outdir)
+		OUTPUT_DIR="$2"
+		shift 2
+		;;
+	*)
+		COMMANDS+=("$1")
+		shift 1
+		;;
+	esac
+done
+
+[[ -z "$COMMIT_HASH" ]] && echo -e "${ERROR} Missing commit hash [-c]" && exit 1
+[[ -z "$KERNEL_VERSION" ]] && KERNEL_VERSION="$(uname -r)" && echo -e "${WARN} Missing kernel version [-k]. Using running kernel $KERNEL_VERSION"
+[[ -z "$OUTPUT_DIR" ]] && OUTPUT_DIR="$TMP_DIR"
+
+[[ ${#COMMANDS[@]} -eq 0 ]] && echo -e "${ERROR} Missing command(s)" && exit 1
+
+# Find boot hash so we can derive UKI IMAGE file name
+find_boot_hash "$COMMIT_HASH"
+[[ -z "$BOOT_HASH" ]] && echo -e "${ERROR} Unable to find boot files. Boot hash missing." && exit 1
+
+UKI_IMAGE="deimos-${KERNEL_VERSION}-${BOOT_HASH}.efi"
+
+echo -e "${INFO} BOOT-HASH: $BOOT_HASH"
+echo -e "${INFO} UKI-IMAGE: $UKI_IMAGE"
+
+while [[ ${#COMMANDS[@]} -gt 0 ]]; do
+    CMD="${COMMANDS[0]}"
+    
+	case $CMD in
+	build)
+		build_uki "$COMMIT_HASH"
+		cp "${OUTPUT_DIR}/$UKI_IMAGE" "$(pwd)/"
+		;;
+
+	sign)
+		sign_uki
+		;;
+
+	deploy)
+		deploy_uki
+		;;
+
+	*)
+		echo -e "${ERROR} unknown command $CMD"
+		exit 1
+		;;
+	esac
+	COMMANDS=("${COMMANDS[@]:1}")
+done
+
+echo -e "${WORKING} Checking bootloader integrity..."
+NEEDS_BOOTLOADER_SIGN=false
+if [[ ! -f "$BOOTLOADER_DEST" ]]; then
+	NEEDS_BOOTLOADER_SIGN=true
+elif ! sbverify --cert "$CERT" "$BOOTLOADER_DEST" &>/dev/null; then
+	echo -e "${INFO} Installed bootloader is unsigned or signature invalid."
+	NEEDS_BOOTLOADER_SIGN=true
+elif [[ "${1-}" == "--sign-bootloader" ]]; then
+	NEEDS_BOOTLOADER_SIGN=true
+	shift
+fi
+
+if [[ "$NEEDS_BOOTLOADER_SIGN" == "true" ]]; then
+	sign_bootloader
 else
 	echo -e "${SUCCESS} Bootloader is already signed and valid."
 fi
-
-# --- 2. Discover Deployment ---
-echo -e "${WORKING} Identifying newest system deployment..."
-# shellcheck disable=SC2012
-NEWEST_DEPLOYMENT="$(ls -dt /boot/ostree/default-*/ | head -n 1)"
-# shellcheck disable=SC2012
-KERNEL=$(ls -t "${NEWEST_DEPLOYMENT}"vmlinuz-* | head -n 1)
-# shellcheck disable=SC2001
-VERSION=$(echo "$KERNEL" | sed 's/.*vmlinuz-//')
-INITRD="${NEWEST_DEPLOYMENT}initramfs-${VERSION}.img"
-OUTPUT="bazzite-${VERSION}.efi"
-
-# --- 3. Build UKI ---
-echo -e "${WORKING} Building UKI for version ${BOLD}${VERSION}${NC}..."
-CMDLINE=$(cat /proc/cmdline | sed -e 's/BOOT_IMAGE=[^ ]* //g')
-
-ukify build \
-	--linux "$KERNEL" \
-	--initrd "$INITRD" \
-	--cmdline "$CMDLINE" \
-	--os-release @"/etc/os-release" \
-	--stub "$STUB" \
-	--output "${TMP_DIR}/${OUTPUT}"
-
-# --- 4. Sign UKI with Yubikey ---
-echo -e "${WORKING} Signing UKI with sbctl..."
-notify_user "Action Required: Touch Yubikey to sign the UKI image."
-
-systemctl restart pcscd && sleep 1
-
-if [ -z "$PIN" ]; then
-	PIN=$(systemd-ask-password "Enter Yubikey PIN for UKI signing:" --icon=security-high --timeout=300)
-	if [ -z "$PIN" ]; then
-		echo -e "${ERROR} No PIN entered or request timed out."
-		exit 1
-	fi
-fi
-
-if env LD_PRELOAD=/usr/lib64/libpcsclite_real.so.1 SBCTL_YUBIKEY_PIN="$PIN" /usr/bin/sbctl sign -s "${TMP_DIR}/${OUTPUT}"; then
-	echo -e "${SUCCESS} UKI signed successfully."
-else
-	echo -e "${ERROR} UKI signing failed."
-	exit 1
-fi
-
-# --- 5. Verify & Deploy ---
-sbverify --cert "$CERT" "${TMP_DIR}/${OUTPUT}"
-echo -e "${WORKING} Deploying to ESP..."
-mkdir -p "$DEST_DIR"
-cp "${TMP_DIR}/${OUTPUT}" "$DEST_DIR/$OUTPUT"
-
-# --- 6. Cleanup Old Files ---
-echo -e "${WORKING} Cleaning up old UKIs..."
-CURRENT_V=$(uname -r)
-# shellcheck disable=SC2010
-OLD_FILES=$(ls "${DEST_DIR}"/bazzite-*.efi 2>/dev/null | grep -v "$CURRENT_V" | sort -V | head -n -2 || true)
-
-if [[ -n "$OLD_FILES" ]]; then
-	echo "$OLD_FILES" | while read -r file; do
-		echo -e "  ${RED}✖ Removing:${NC} $(basename "$file")"
-		rm -f "$file"
-	done
-	echo -e "${SUCCESS} Cleanup complete."
-fi
-
-echo -e "${INFO}---Script complete---"

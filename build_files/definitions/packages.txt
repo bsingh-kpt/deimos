@@ -1,3 +1,3 @@
 # NAME | VERSION | URL | TARGET_DIR | CANONICAL_NAME | STRIP | CHECKSUM (SHA256)
 # --------------------------------------------------------------------------------
-SBCTL Deimos | 1.0.0 | local://$(ASSETS_DIR)/packages/sbctl-deimos-v1.0.0.tar.gz | /usr/bin | sbctl-deimos | 0 | f76f23a0e8a934016ed7a999f804b37cbc95fe28c8ca611d0116e6827f3f465f
+SBCTL Deimos | 1.0.0 | local://${ASSETS_DIR}/packages/sbctl-deimos-v1.0.0.tar.gz | /usr/bin | sbctl-deimos | 0 | f76f23a0e8a934016ed7a999f804b37cbc95fe28c8ca611d0116e6827f3f465f

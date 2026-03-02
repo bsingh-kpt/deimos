@@ -40,7 +40,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Download Build Artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           # The name must match exactly what was uploaded in build-disk.yml
           name: build-iso-stable

@@ -103,7 +103,7 @@ jobs:
 
       - name: Login to GitHub Container Registry
         if: github.event_name != 'pull_request' && github.event.workflow_run.event != 'pull_request'
-        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -118,7 +118,7 @@ jobs:
       # Docker requires lowercase registry references
       - name: Lowercase Registry
         id: registry_case
-        uses: ASzc/change-string-case-action@d0603cd0a7dd490be678164909f65c7737470a7f # v6
+        uses: ASzc/change-string-case-action@ecd1412d078f2e06e9eedcbaa6fcd988151c3f82 # v8
         with:
           string: ${{ env.IMAGE_REGISTRY }}
 
@@ -156,7 +156,7 @@ jobs:
 
       - name: Upload disk images and Checksum to Job Artifacts
         if: github.event_name != 'pull_request' && github.event.workflow_run.event != 'pull_request'
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: build-iso-${{ env.IMAGE_TAG }}
           path: |

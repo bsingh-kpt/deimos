@@ -77,7 +77,7 @@ EOF
 ### INSTALL PACKAGES SECTION - START ###
 # Enable COPR
 # dnf5 -y copr enable ublue-os/staging
-curl -fsSLo /etc/yum.repos.d/hardware:razer.repo https://openrazer.github.io/hardware:razer.repo
+curl -fsSLo /etc/yum.repos.d/hardware:razer.repo https://download.opensuse.org/repositories/hardware:/razer/Fedora_Rawhide/hardware:razer.repo
 curl -fsSLo /etc/yum.repos.d/brave-browser.repo https://brave-browser-rpm-release.s3.brave.com/brave-browser.repo
 
 # Standard -dx tools minus the handheld overhead
@@ -91,7 +91,6 @@ dnf5 install -y \
 	kcalc \
 	ckb-next polychromatic \
 	openrazer-meta openrazer-daemon \
-	brave-browser \
 	keepassxc \
 	yubikey-manager yubico-piv-tool pam_yubico \
 	yubikey-manager-qt yubikey-personalization-gui \
@@ -99,6 +98,11 @@ dnf5 install -y \
 	libfido2 \
 	pam-u2f pamu2fcfg \
 	sbsigntools
+
+# Install browsers
+dnf5 install --allowerasing -y \
+	brave-browser \
+	firefox
 
 ### INSTALL PACKAGES SECTION - END ###
 

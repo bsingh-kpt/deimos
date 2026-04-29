@@ -1,10 +1,14 @@
 name: "Generate PR Description"
 
 on:
+    workflow_dispatch:
     pull_request:
         branches:
             - stable
-        types: [ opened, synchronize, reopened ]
+        types:
+            - opened
+            - synchronize
+            - reopened
 
 jobs:
     generate-description:
@@ -66,4 +70,6 @@ jobs:
               uses: tzkhan/pr-update-action@v2
               with:
                   repo-token: "${{ secrets.GITHUB_TOKEN }}"
-                  base64-pr-body: ${{ steps.pr_content.outputs.body }}
+                  body-template: ${{ steps.pr_content.outputs.body }}
+                  head-branch-regex: '.*' 
+                  body-update-action: 'replace'

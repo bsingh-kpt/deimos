@@ -70,4 +70,6 @@ jobs:
               uses: tzkhan/pr-update-action@v2
               with:
                   repo-token: "${{ secrets.GITHUB_TOKEN }}"
-                  base64-pr-body: ${{ steps.pr_content.outputs.body }}
+                  body-template: ${{ steps.pr_content.outputs.body }}
+                  head-branch-regex: '.*' 
+                  body-update-action: 'replace'

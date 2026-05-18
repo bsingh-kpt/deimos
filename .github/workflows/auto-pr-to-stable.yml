@@ -1,0 +1,38 @@
+name: "Auto-Create Main to Stable PR"
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  create-pr:
+    runs-on: ubuntu-24.04
+    permissions:
+      pull-requests: write
+      contents: read
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create Pull Request
+        id: cpr
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: "main"               # The source branch containing your new code
+          base: "stable"               # The destination branch you want to merge into
+          title: "🚀 Sync: Main to Stable"
+          # Leave the body generic or minimal; your existing "Generate PR Description" 
+          # workflow will automatically overwrite this with the clean changelog!
+          body: "Automated sync from main to stable triggered by checkpoint tag."
+          labels: |
+            automated-sync
+            dependencies
+
+      - name: Check PR Output
+        run: |
+          echo "Pull Request Created: ${{ steps.cpr.outputs.pull-request-url }}"

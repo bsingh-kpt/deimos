@@ -26,22 +26,34 @@ jobs:
             - name: Generate PR Content
               id: pr_content
               run: |
-                  # 1. Extract Features (Commits starting with "feat")
-                  # This cleans the "feat:" prefix for a professional look
-                  FEATURES=$(git log origin/stable..${{ github.event.pull_request.head.sha }} --oneline --grep="^feat" --pretty=format:"- %s" | sed -E 's/- feat(\(.*\))?: //g')
-
+                  # 1. Get the newly pushed tag on main
+                  NEW_TAG="${{ github.ref_name }}"
+                  
+                  # 2. Find the most recent tag that exists on the stable branch
+                  # We sort stable's tags by topology/date to find the latest one
+                  LAST_STABLE_TAG=$(git tag --merged origin/stable --sort=-creatordate | head -n 1)
+                  
+                  # Fallback if stable has no tags yet (uses the first commit of the repo)
+                  if [ -z "$LAST_STABLE_TAG" ]; then
+                      LAST_STABLE_TAG=$(git rev-list --max-parents=0 HEAD)
+                  fi
+                  
+                  echo "Comparing from Stable Tag ($LAST_STABLE_TAG) to New Main Tag ($NEW_TAG)"
+  
+                  # 3. Extract Features
+                  FEATURES=$(git log $LAST_STABLE_TAG..$NEW_TAG --oneline --grep="^feat" --pretty=format:"- %s" | sed -E 's/- feat(\(.*\))?: //g')
                   if [ -z "$FEATURES" ]; then
-                    FEATURES="- Maintenance updates and internal stability improvements."
+                      FEATURES="- Maintenance updates and internal stability improvements."
                   fi
 
-                  # 2. Generate Full Changelog
-                  CHANGELOG=$(git log origin/stable..${{ github.event.pull_request.head.sha }} --pretty=format:"- [%h] %s")
+                  # 4. Generate Full Changelog
+                  CHANGELOG=$(git log $LAST_STABLE_TAG..$NEW_TAG --pretty=format:"- [%h] %s")
 
-                  # 3. Calculate Stats for "The Gist"
-                  FILES_CHANGED=$(git diff --name-only origin/stable..${{ github.event.pull_request.head.sha }} | wc -l)
-                  STATS=$(git diff --shortstat origin/stable..${{ github.event.pull_request.head.sha }})
+                  # 5. Calculate Stats for "The Gist"
+                  FILES_CHANGED=$(git diff --name-only $LAST_STABLE_TAG..$NEW_TAG | wc -l)
+                  STATS=$(git diff --shortstat $LAST_STABLE_TAG..$NEW_TAG)
 
-                  # 4. Construct the Markdown Body
+                  # 5. Construct the Markdown Body
                   {
                     echo "body<<EOF"
                     echo "## 🚀 Sync: Main to Stable"

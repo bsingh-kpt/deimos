@@ -49,16 +49,16 @@ EOF
 
 cat <<EOF >/etc/os-release
 NAME="Deimos"
-VERSION="43.20260126.0 (Kinoite)"
+VERSION="$IMAGEINFO_VERSION.0 (Kinoite)"
 RELEASE_TYPE=$IMAGEINFO_IMAGE_TAG
 ID=deimos
 ID_LIKE="bazzite fedora"
-VERSION_ID=43
+VERSION_ID=$IMAGEINFO_FEDORA_VERSION
 VERSION_CODENAME="Kinoite"
 PRETTY_NAME="Deimos"
 ANSI_COLOR="0;38;2;138;43;226"
 LOGO=bazzite-logo-icon
-CPE_NAME="cpe:/o:bsingh-kpt:deimos:43"
+CPE_NAME="cpe:/o:bsingh-kpt:deimos:$IMAGEINFO_FEDORA_VERSION"
 DEFAULT_HOSTNAME="deimos"
 HOME_URL="https://github.com/bsingh-kpt/deimos"
 DOCUMENTATION_URL="https://github.com/bsingh-kpt/deimos"
@@ -67,9 +67,9 @@ BUG_REPORT_URL="https://github.com/bsingh-kpt/deimos/issues/"
 SUPPORT_END=2026-12-02
 VARIANT="Kinoite"
 VARIANT_ID=bazzite-nvidia-open
-OSTREE_VERSION='43.20260126.0'
-BUILD_ID="Stable (F43.20260126)"
-BOOTLOADER_NAME="Bazzite Stable (F43.20260126)"
+OSTREE_VERSION='$IMAGEINFO_VERSION.0'
+BUILD_ID="Stable (F$IMAGEINFO_VERSION)"
+BOOTLOADER_NAME="Bazzite Stable (F$IMAGEINFO_VERSION)"
 IMAGE_ID="deimos-$IMAGEINFO_IMAGE_BRANCH-43.20260126"
 EOF
 ###

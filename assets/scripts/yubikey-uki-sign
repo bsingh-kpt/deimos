@@ -97,13 +97,16 @@ find_boot_hash() {
 
 	local bhash=""
 
+	# ostree_boot_path="$(rpm-ostree status --json | jq -r '.deployments[] | select(.staged==true) | .checksum')"
+
 	# shellcheck disable=SC2010
-	ostree_boot_path="$(ls -l /ostree/boot.1.1/default/*/* | grep "$commit_hash" | awk '{print $9}')"
-	bhash="$(echo "$ostree_boot_path" | cut -d'/' -f5)"
+	ostree_boot_path="$(ls -l /ostree/boot*/default/*/* | grep "$commit_hash" | awk '{print $9}')"
+	bhash="$(echo "$ostree_boot_path" | cut -d'/' -f5 | head -1)"
 	if [[ -z "$ostree_boot_path" || -z "$bhash" ]]; then
 		echo -e "${ERROR} Unable to find boot path or hash for deployment: ${commit_hash}"
 		return 1
 	fi
+
 	BOOT_HASH="$bhash"
 }
 

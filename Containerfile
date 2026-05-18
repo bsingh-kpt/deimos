@@ -6,7 +6,7 @@ COPY thirdparty /thirdparty/
 COPY cosign.pub /
 
 # Base Image
-FROM ghcr.io/ublue-os/bazzite-nvidia-open:stable
+FROM ghcr.io/ublue-os/bazzite-nvidia-open:stable@sha256:d8743773b84627d376ae168cc9807e8f27849ad345d075dd1201617f833de5df
 
 ARG IMAGE_COMMIT_ID
 ARG GITHUB_REF_NAME

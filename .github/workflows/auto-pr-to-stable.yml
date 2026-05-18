@@ -1,0 +1,45 @@
+name: "Auto-Create Main to Stable PR"
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  create-pr:
+    runs-on: ubuntu-24.04
+    permissions:
+      pull-requests: write
+      contents: read
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create Pull Request
+        id: cpr
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_TITLE: "🚀 Sync: Main to Stable (${{ github.ref_name }})"
+          PR_BODY: "Maintenance update"
+        run: |
+          # Check if an open PR from main to stable already exists to prevent duplicate failures
+          PR_EXISTS=$(gh pr list --head main --base stable --state open --json number --jq '.[0].number')
+          
+          if [ -n "$PR_EXISTS" ]; then
+            echo "A Pull Request from main to stable already exists (#$PR_EXISTS). Updating description instead."
+            gh pr edit "$PR_EXISTS" --title "$PR_TITLE" --body "$PR_BODY"
+          else
+            echo "Creating a new Pull Request from main to stable."
+            gh pr create \
+              --head main \
+              --base stable \
+              --title "$PR_TITLE" \
+              --body "$PR_BODY"
+          fi
+
+      - name: Check PR Output
+        run: |
+          echo "Pull Request Created: ${{ steps.cpr.outputs.pull-request-url }}"

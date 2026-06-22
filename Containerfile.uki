@@ -1,0 +1,49 @@
+ARG BASE_IMAGE
+
+
+
+# Allow build scripts to be referenced without being copied into the final image
+FROM scratch AS ctx
+COPY build_files /
+COPY assets /assets/
+COPY thirdparty /thirdparty/
+COPY cosign.pub /
+
+# Remove the kernel and initrd from the base image
+FROM localhost/${BASE_IMAGE}:latest as rootfs
+RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
+    /ctx/scripts/remove-kernel-initrd.sh
+
+### BUILD INITRD
+# Rebuild the initramfs and move kernel to the root    
+FROM localhost/${BASE_IMAGE}:latest as initrd
+RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
+    /ctx/scripts/rebuild-initrd.sh
+RUN mv /usr/lib/modules/*/vmlinuz /vmlinuz    
+
+### LINTING
+## Verify final image and contents are correct.
+# Make sure we pass the lints
+FROM localhost/${BASE_IMAGE}:latest as lint
+RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
+    --mount=type=bind,from=rootfs,src=/,target=/tmp/target,ro \
+    /ctx/scripts/bootc-container-lint.sh
+
+### UKIFY
+# Build and sign UKI OR sign during deployment
+FROM localhost/${BASE_IMAGE}:latest as sealed-uki
+# Copy kernel & initramfs from earlier stage
+COPY --from=initrd /vmlinuz /vmlinuz
+COPY --from=initrd /initramfs /initramfs
+RUN mkdir -p /tmp/uki-build-scratch /tmp/build-vartmp
+RUN --mount=type=tmpfs,target=/run \
+    --mount=type=bind,src=/tmp/uki-build-scratch,target=/tmp,rw \
+    --mount=type=bind,src=/tmp/build-vartmp,target=/var/tmp,rw \
+    --mount=type=bind,from=rootfs,src=/,target=/mnt/target,ro \
+    --mount=type=bind,from=ctx,source=/,target=/ctx \
+    /ctx/scripts/uki.sh
+
+### FINAL IMAGE
+# Copy UKI to our final image
+FROM rootfs as final
+COPY --from=sealed-uki /boot/EFI/Linux /boot/EFI/Linux

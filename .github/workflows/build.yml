@@ -14,6 +14,7 @@ on:
     branches:
       - main
       - stable
+      - feature_sealed_uki
     paths-ignore:
       - "**/README.md"
   workflow_dispatch:
@@ -29,20 +30,23 @@ env:
   IMAGE_LOGO_URL: "https://github.com/ublue-os/bazzite/blob/44ad0a73969365d3842896de25038c555a294bc6/repo_content/logo.png"
   IMAGE_NAME: "${{ github.event.repository.name }}"
   IMAGE_REGISTRY: "ghcr.io/${{ github.repository_owner }}"
+  #BASE_IMAGE: "ghcr.io/ublue-os/bazzite-nvidia-open:stable@sha256:54e3a62b99ff1f0e7907be755879438596d9b5c0f8633e00bcbf93692d2135e6"
+  BASE_IMAGE: "quay.io/fedora-ostree-desktops/kinoite:44"
+  TOOLS_IMAGE: "quay.io/fedora-atomic-desktops-sealed/tools:44"
   # Logic:
   # 1. If it's a Pull Request, use 'pr-<number>'
   # 2. If it's a Push to 'main', use 'latest'
   # 3. If it's a Push/Merge to 'stable', use 'stable'
   # 4. Fallback to branch name
   IMAGE_TAG: >-
-    ${{ 
+    ${{
       github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || 
       (github.ref_name == 'main' && 'latest' || github.ref_name) 
     }}
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref_name }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   build_push:
@@ -50,7 +54,7 @@ jobs:
     if: >
       (github.event_name == 'workflow_dispatch') ||
       (github.event_name == 'pull_request' && (github.base_ref == 'main' || github.base_ref == 'stable')) ||
-      (github.ref_name == 'main' || github.ref_name == 'stable' || startsWith(github.ref, 'refs/tags/v'))
+      (github.ref_name == 'main' || github.ref_name == 'stable' || github.ref_name == 'feature_sealed_uki' || startsWith(github.ref, 'refs/tags/v'))
     runs-on: ubuntu-24.04
 
     permissions:
@@ -64,6 +68,10 @@ jobs:
           # Lowercase the image uri
           echo "IMAGE_REGISTRY=${IMAGE_REGISTRY,,}" >> ${GITHUB_ENV}
           echo "IMAGE_NAME=${IMAGE_NAME,,}" >> ${GITHUB_ENV}
+          rm -rf /tmp/chunkah-out || true
+          rm -rf /tmp/build-run || true
+          rm -rf /tmp/build-vartmp || true
+          rm -rf /tmp/uki-build-scratch || true
 
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
@@ -72,8 +80,8 @@ jobs:
 
       # You only use this action if the container-storage-action proves to be unreliable, you don't need to enable both
       # This is optional, but if you see that your builds are way too big for the runners, you can enable this by uncommenting the following lines:
-      - name: Maximize build space
-        uses: ublue-os/remove-unwanted-software@695eb75bc387dbcd9685a8e72d23439d8686cba6
+      # - name: Maximize build space
+      #   uses: ublue-os/remove-unwanted-software@695eb75bc387dbcd9685a8e72d23439d8686cba6
 
       - name: Mount BTRFS for podman storage
         id: container-storage-action
@@ -115,13 +123,13 @@ jobs:
           tags: |
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
             type=raw,value=stable,enable=${{ github.ref == 'refs/heads/stable' }}
+            type=raw,value=latest-uki,enable=${{ github.ref == 'refs/heads/feature_sealed_uki' }}
             type=raw,value=${{ inputs.version_tag }},enable=${{ github.event_name == 'workflow_dispatch' }}
             type=raw,value=${{ steps.check_tag.outputs.tag }},enable=${{ steps.check_tag.outputs.tagged == 'true' }}
             type=raw,value=${{ env.IMAGE_TAG }}.{{date 'YYYYMMDD'}},enable=${{ github.ref_name == 'main' || github.ref_name == 'stable' }}
             type=sha,enable=${{ github.event_name == 'pull_request' }}
             type=ref,event=pr
           labels: |
-            ostree.container-image-reference=ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}
             io.artifacthub.package.readme-url=https://raw.githubusercontent.com/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}/${{ github.sha }}/README.md
             org.opencontainers.image.created=${{ steps.date.outputs.date }}
             org.opencontainers.image.description=${{ env.IMAGE_DESC }}
@@ -146,21 +154,31 @@ jobs:
         with:
           containerfiles: |
             ./Containerfile
-          # Postfix image name with -custom to make it a little more descriptive
-          # Syntax: https://docs.github.com/en/actions/learn-github-actions/expressions#format
           image: ${{ env.IMAGE_NAME }}
           tags: ${{ steps.metadata.outputs.tags }}
           labels: ${{ steps.metadata.outputs.labels }}
-          oci: false
+          oci: true
           build-args: |
+            BASE=${{ env.BASE_IMAGE }}
+            TOOLS=${{ env.TOOLS_IMAGE }}
             IMAGE_COMMIT_ID=${{ github.sha }}
             GITHUB_REF_NAME=${{ github.ref_name }}
+          extra-args: |
+            --security-opt=label=disable
+            --volume /tmp:/tmp:rw
+            --volume /var/tmp:/var/tmp:rw
+
+      - name: Upload digest dumpfile
+        uses: actions/upload-artifact@v4
+        with:
+          name: composefs-dump-buildtime
+          path: /tmp/dump-buildtime.txt
 
       # These `if` statements are so that pull requests for your custom images do not make it publish any packages under your name without you knowing
       # They also check if the runner is on the default branch so that things like the merge queue (if you enable it), are going to work
       - name: Login to GitHub Container Registry
         uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
-        if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/stable' || startsWith(github.ref, 'refs/tags/v'))
+        if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/stable' || github.ref == 'refs/heads/feature_sealed_uki' || startsWith(github.ref, 'refs/tags/v'))
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -168,7 +186,7 @@ jobs:
 
       - name: Push To GHCR
         uses: redhat-actions/push-to-registry@5ed88d269cf581ea9ef6dd6806d01562096bee9c # v2
-        if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/stable' || startsWith(github.ref, 'refs/tags/v'))
+        if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/stable' || github.ref == 'refs/heads/feature_sealed_uki' || startsWith(github.ref, 'refs/tags/v'))
         id: push
         env:
           REGISTRY_USER: ${{ github.actor }}
@@ -186,12 +204,12 @@ jobs:
       # to consume. For more details, review the image signing section of the README.
       - name: Install Cosign
         uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
-        if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/stable' || startsWith(github.ref, 'refs/tags/v'))
+        if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/stable' || github.ref == 'refs/heads/feature_sealed_uki' || startsWith(github.ref, 'refs/tags/v'))
         with:
           cosign-release: "v2.6.1"
 
       - name: Sign container image
-        if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/stable' || startsWith(github.ref, 'refs/tags/v'))
+        if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/stable' || github.ref == 'refs/heads/feature_sealed_uki' || startsWith(github.ref, 'refs/tags/v'))
         run: |
           IMAGE_FULL="${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}"
           for tag in ${{ steps.metadata.outputs.tags }}; do

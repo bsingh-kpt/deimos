@@ -77,7 +77,7 @@ EOF
 ### INSTALL PACKAGES SECTION - START ###
 # Enable COPR
 # dnf5 -y copr enable ublue-os/staging
-curl -fsSLo /etc/yum.repos.d/hardware:razer.repo https://download.opensuse.org/repositories/hardware:/razer/Fedora_Rawhide/hardware:razer.repo
+#curl -fsSLo /etc/yum.repos.d/hardware:razer.repo https://download.opensuse.org/repositories/hardware:/razer/Fedora_Rawhide/hardware:razer.repo
 curl -fsSLo /etc/yum.repos.d/brave-browser.repo https://brave-browser-rpm-release.s3.brave.com/brave-browser.repo
 
 # Standard -dx tools minus the handheld overhead
@@ -89,8 +89,6 @@ dnf5 install -y \
 	podman podman-docker podman-tui podman-machine \
 	git-delta \
 	kcalc \
-	ckb-next polychromatic \
-	openrazer-meta openrazer-daemon \
 	keepassxc \
 	yubikey-manager yubico-piv-tool pam_yubico \
 	yubikey-manager-qt yubikey-personalization-gui \
@@ -127,8 +125,9 @@ cp -f /ctx/assets/system_files/systemd-services/yubikey-uki-sign.path /etc/syste
 ### SYSTEM CONFIGURATION SECTION - START ###
 ## System services
 systemctl enable podman.socket
-systemctl mask ublue-update.service
 systemctl enable yubikey-uki-sign.path
+systemctl mask ublue-update.service
+systemctl mask uupd.timer
 
 # KDE UI configurations
 mkdir -p /etc/skel/.config
@@ -177,10 +176,17 @@ X-KDE-autostart-after=panel
 EOF
 ### POST INSTALL SECTION - END ###
 
-### UKI BUILD ###
+### SELINUX ###
+semodule -d waydroid
+### SELINUX ###
 
-cat <<EOF >>/etc/kernel/install.conf
-layout=uki
+### COMPOSEFS BACKEND ###
+mkdir -p /usr/lib/ostree/
+cat <<'EOF' >/usr/lib/ostree/prepare-root.conf
+[composefs]
+enabled = yes
+
+[etc]
+transient = true
 EOF
-
-### UKI BUILD ###
+### COMPOSEFS BACKEND ###
